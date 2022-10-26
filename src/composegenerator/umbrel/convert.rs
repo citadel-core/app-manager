@@ -81,7 +81,7 @@ pub fn convert_compose(
         let mut service_name = service.0;
         let service_def = service.1;
         // We don't have an app_proxy
-        if service_name == "app_proxy" {
+        if service_name == "app_proxy" || service_name == "tor" {
             continue;
         }
         if service_name == "web" && !has_main {
