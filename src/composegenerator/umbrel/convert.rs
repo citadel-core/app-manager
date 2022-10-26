@@ -152,7 +152,7 @@ pub fn convert_compose(
                     let mut new_value = replace_env_vars(str);
                     // If the APP_PASSWORD is also used, there could be a conflict otherwise
                     // For apps which don't use APP_PASSWORD, this can be reverted
-                    if new_value.contains("APP_SEED") {
+                    if new_value.contains("APP_SEED") && metadata.deterministic_password {
                         new_value = new_value.replace("APP_SEED", "APP_SEED_2");
                     }
                     if new_value.contains("APP_PASSWORD") {
