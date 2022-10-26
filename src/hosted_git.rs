@@ -1,10 +1,10 @@
 use gitlab::Gitlab;
 
-use super::composegenerator::types::Metadata;
+use super::composegenerator::v4::types::InputMetadata;
 use super::github;
 
 pub async fn check_updates(
-    metadata: &Metadata,
+    metadata: &InputMetadata,
     include_pre: bool,
     token: Option<String>,
 ) -> Result<String, String> {

@@ -19,10 +19,9 @@ pub enum Permissions {
 #[derive(Serialize, Deserialize, Clone, Default, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 #[serde(rename_all = "camelCase")]
-pub struct Metadata {
+pub struct OutputMetadata {
     /// The app id, only set in output
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub id: Option<String>,
+    pub id: String,
     /// The name of the app
     pub name: String,
     /// The version of the app
@@ -61,7 +60,6 @@ pub struct Metadata {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub version_control: Option<String>,
     /// True if all dependencies are installed
-    #[serde(default = "bool::default")]
     pub compatible: bool,
     /// If compatible is false, the dependencies that are missing
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -74,5 +72,5 @@ pub struct ResultYml {
     pub port: u16,
     pub new_tor_entries: String,
     pub spec: ComposeSpecification,
-    pub metadata: Metadata,
+    pub metadata: OutputMetadata,
 }

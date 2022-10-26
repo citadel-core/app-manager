@@ -12,7 +12,7 @@ use citadel_apps::{
 use citadel_apps::{
     composegenerator::{
         compose::types::ComposeSpecification,
-        types::{Metadata, ResultYml},
+        types::{ResultYml},
         v3::{convert::v3_to_v4, types::SchemaItemContainers},
         v4::types::AppYml,
     },
@@ -218,10 +218,6 @@ async fn main() {
             #[cfg(feature = "umbrel")]
             "umbrel" => {
                 let schema = schemars::schema_for!(UmbrelMetadata);
-                println!("{}", serde_yaml::to_string(&schema).unwrap());
-            }
-            "metadata" => {
-                let schema = schemars::schema_for!(Metadata);
                 println!("{}", serde_yaml::to_string(&schema).unwrap());
             }
             "result" => {

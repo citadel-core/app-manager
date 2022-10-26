@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
 use crate::composegenerator::compose::types::{Command, EnvVars, StringOrIntOrBool};
-use crate::composegenerator::types::{Metadata as CitadelMetadata, Permissions};
+use crate::composegenerator::types::{Permissions};
 use crate::composegenerator::umbrel::types::Metadata;
-use crate::composegenerator::v4::types::{AppYml, Container, Mounts};
+use crate::composegenerator::v4::types::{AppYml, Container, Mounts, InputMetadata as CitadelMetadata};
 use crate::map;
 
 pub fn convert_metadata(metadata: Metadata) -> CitadelMetadata {
@@ -20,7 +20,6 @@ pub fn convert_metadata(metadata: Metadata) -> CitadelMetadata {
         })
         .collect();
     CitadelMetadata {
-        id: None,
         name: metadata.name,
         version: metadata.version,
         repo: map! {
@@ -45,9 +44,6 @@ pub fn convert_metadata(metadata: Metadata) -> CitadelMetadata {
         description: metadata.description,
         implements: None,
         version_control: None,
-        // Ignored, but set it to true to not confuse people
-        compatible: true,
-        missing_dependencies: None,
     }
 }
 

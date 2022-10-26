@@ -1,7 +1,7 @@
 use serde_json::{Map, Value};
 
 use super::types::Schema as AppYmlV3;
-use crate::composegenerator::types::{Metadata, ResultYml};
+use crate::composegenerator::types::{ResultYml};
 use crate::composegenerator::v4::{
     convert::convert_config as convert_config_v4, types as types_v4,
 };
@@ -13,8 +13,7 @@ pub fn v3_to_v4(app: AppYmlV3, installed_services: &Option<&Vec<String>>) -> typ
         super::types::RepoDefinition::RepoUrl(url) => HashMap::from([("Public".to_string(), url)]),
         super::types::RepoDefinition::MultiRepo(map) => map,
     };
-    let metadata = Metadata {
-        id: None,
+    let metadata = types_v4::InputMetadata {
         name: app.metadata.name,
         version: app.metadata.version,
         category: app.metadata.category,
@@ -31,9 +30,6 @@ pub fn v3_to_v4(app: AppYmlV3, installed_services: &Option<&Vec<String>>) -> typ
         description: app.metadata.description,
         implements: None,
         version_control: None,
-        // Ignored, but set it to true to not confuse people
-        compatible: true,
-        missing_dependencies: None,
     };
     let mut services = HashMap::<String, types_v4::Container>::with_capacity(app.containers.len());
     let deps = flatten(app.metadata.dependencies.unwrap_or_default());

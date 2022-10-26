@@ -5,7 +5,7 @@ use super::{
     types::PortMapElement,
     utils::{get_host_port, get_main_container, validate_cmd, validate_port_map_app},
 };
-use crate::utils::{find_env_vars, flatten};
+use crate::{utils::{find_env_vars, flatten}, composegenerator::types::OutputMetadata};
 use crate::{
     bmap,
     composegenerator::{
@@ -512,9 +512,27 @@ pub fn convert_config(
         &app.metadata.permissions,
         installed_services.as_ref().unwrap_or(&vec![]),
     );
-    let mut metadata = app.metadata;
-    metadata.id = Some(app_name.to_string());
-    metadata.compatible = missing_deps.is_empty();
+    let mut metadata = OutputMetadata {
+        id: app_name.to_string(),
+        name: app.metadata.name,
+        version: app.metadata.version,
+        category: app.metadata.category,
+        tagline: app.metadata.tagline,
+        developers: app.metadata.developers,
+        description: app.metadata.description,
+        permissions: app.metadata.permissions,
+        repo: app.metadata.repo,
+        support: app.metadata.support,
+        gallery: app.metadata.gallery,
+        path: app.metadata.path,
+        default_password: app.metadata.default_password,
+        tor_only: app.metadata.tor_only,
+        update_containers: app.metadata.update_containers,
+        implements: app.metadata.implements,
+        version_control: app.metadata.version_control,
+        compatible: missing_deps.is_empty(),
+        missing_dependencies: None,
+    };
     if !missing_deps.is_empty() {
         metadata.missing_dependencies = Some(missing_deps);
     }
@@ -537,8 +555,8 @@ mod test {
         bmap,
         composegenerator::{
             output::types::{ComposeSpecification, NetworkEntry, Service},
-            types::{Metadata, Permissions, ResultYml},
-            v4::types::{AppYml, Container},
+            types::{Permissions, ResultYml, OutputMetadata},
+            v4::types::{AppYml, Container, InputMetadata},
         },
         map,
     };
@@ -549,9 +567,7 @@ mod test {
     fn test_simple_app() {
         let example_app = AppYml {
             citadel_version: 4,
-            metadata: Metadata {
-                // To test if this is being overwritten
-                id: Some("a-fake-id-that-should-be-ignored".to_string()),
+            metadata: InputMetadata {
                 name: "Example app".to_string(),
                 version: "1.0.0".to_string(),
                 category: "Example category".to_string(),
@@ -615,8 +631,8 @@ mod test {
                 ..Default::default()
 
             },
-            metadata: Metadata {
-                id: Some("example-app".to_string()),
+            metadata: OutputMetadata {
+                id: "example-app".to_string(),
                 name: "Example app".to_string(),
                 version: "1.0.0".to_string(),
                 category: "Example category".to_string(),
