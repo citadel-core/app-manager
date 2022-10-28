@@ -4,7 +4,7 @@ pub mod github;
 #[cfg(feature = "dev-tools")]
 pub mod gitlab;
 #[cfg(feature = "dev-tools")]
-pub mod updates;
-#[cfg(feature = "dev-tools")]
 pub mod hosted_git;
+#[cfg(feature = "dev-tools")]
+pub mod updates;
 pub mod utils;

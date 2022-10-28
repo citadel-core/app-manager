@@ -1,8 +1,8 @@
+use super::super::compose::types::{Command, StringOrIntOrBool};
 #[cfg(feature = "schema")]
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
-use super::super::compose::types::{StringOrIntOrBool, Command};
 
 #[derive(Clone, Default, Deserialize, Serialize, PartialEq, Eq, Debug)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]

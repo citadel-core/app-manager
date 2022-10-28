@@ -473,7 +473,7 @@ async fn main() {
 
             // Part 6: Loop through the appps again and run the actual conversion process
             let apps = std::fs::read_dir(citadel_root.join("apps"))
-            .expect("Error reading apps directory!");
+                .expect("Error reading apps directory!");
             let mut app_registry: Vec<OutputMetadata> = Vec::new();
 
             let mut tor_entries: Vec<String> = Vec::new();
@@ -569,7 +569,6 @@ async fn main() {
                     current_file = 1;
                 }
             }
-
         }
         #[cfg(feature = "dev-tools")]
         SubCommand::Schema { version } => match version.as_str() {

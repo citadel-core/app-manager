@@ -1,9 +1,9 @@
+use gitlab::api::projects::repository::tags::Tags;
+use gitlab::api::AsyncQuery;
 use gitlab::AsyncGitlab;
 use semver::Version;
 use serde::Deserialize;
 use url::Url;
-use gitlab::api::AsyncQuery;
-use gitlab::api::projects::repository::tags::Tags;
 
 // The API has more data, but we only need this
 #[derive(Debug, Deserialize)]
@@ -53,8 +53,11 @@ pub fn get_repo_path(url: &str) -> Option<(String, String)> {
         return None;
     }
     let url = url.unwrap();
-    let segments: Vec<&str> = url.path_segments().unwrap_or_else(|| "".split(' ')).collect();
-    if segments.len() < 2{
+    let segments: Vec<&str> = url
+        .path_segments()
+        .unwrap_or_else(|| "".split(' '))
+        .collect();
+    if segments.len() < 2 {
         return None;
     }
     Some((url.host().unwrap().to_string(), segments.join("/")))

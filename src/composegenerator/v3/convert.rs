@@ -1,5 +1,5 @@
 use super::types::Schema as AppYmlV3;
-use crate::composegenerator::types::{ResultYml};
+use crate::composegenerator::types::ResultYml;
 use crate::composegenerator::v4::types::PortMapElement;
 use crate::composegenerator::v4::{
     convert::convert_config as convert_config_v4, types as types_v4,
@@ -180,5 +180,10 @@ pub fn convert_config(
     port_map: &Option<HashMap<String, HashMap<String, Vec<PortMapElement>>>>,
     installed_services: &Vec<String>,
 ) -> Result<ResultYml, String> {
-    convert_config_v4(app_name, v3_to_v4(app, &Some(installed_services)), port_map, &None)
+    convert_config_v4(
+        app_name,
+        v3_to_v4(app, &Some(installed_services)),
+        port_map,
+        &None,
+    )
 }

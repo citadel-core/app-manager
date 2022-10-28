@@ -62,7 +62,8 @@ pub async fn update_app(app: &mut AppYmlFile, include_pre: bool) -> Result<(), (
             }
             let current_version = current_version.unwrap();
             let (owner, repo) = repo.unwrap();
-            let latest_tag = crate::github::check_updates(&owner, &repo, &current_version, include_pre).await;
+            let latest_tag =
+                crate::github::check_updates(&owner, &repo, &current_version, include_pre).await;
             if let Err(error) = latest_tag {
                 eprintln!("Failed to get latest release: {}", error);
                 return Err(());

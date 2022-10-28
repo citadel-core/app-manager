@@ -1,9 +1,11 @@
 use std::collections::HashMap;
 
 use crate::composegenerator::compose::types::{Command, EnvVars, StringOrIntOrBool};
-use crate::composegenerator::types::{Permissions};
+use crate::composegenerator::types::Permissions;
 use crate::composegenerator::umbrel::types::Metadata;
-use crate::composegenerator::v4::types::{AppYml, Container, Mounts, InputMetadata as CitadelMetadata};
+use crate::composegenerator::v4::types::{
+    AppYml, Container, InputMetadata as CitadelMetadata, Mounts,
+};
 use crate::map;
 
 pub fn convert_metadata(metadata: Metadata) -> CitadelMetadata {
@@ -137,7 +139,9 @@ pub fn convert_compose(
                         let mut split = val.split('=');
                         map.insert(
                             split.next().expect("Env var invalid").to_string(),
-                            StringOrIntOrBool::String(split.next().expect("Env var invalid").to_string()),
+                            StringOrIntOrBool::String(
+                                split.next().expect("Env var invalid").to_string(),
+                            ),
                         );
                     }
                     map
@@ -159,12 +163,10 @@ pub fn convert_compose(
                         new_value = new_value.replace("APP_PASSWORD", "APP_SEED");
                     }
                     StringOrIntOrBool::String(new_value)
-                },
+                }
                 _ => value,
             };
-            env.as_mut()
-                .unwrap()
-                .insert(key, new_value);
+            env.as_mut().unwrap().insert(key, new_value);
         }
         let mut new_cmd: Option<Command> = None;
         if let Some(command) = service_def.command {
@@ -199,7 +201,9 @@ pub fn convert_compose(
             };
         }
         if let Some(caps) = &service_def.cap_add {
-            if caps.contains(&"CAP_NET_ADMIN".to_string()) || caps.contains(&"CAP_NET_RAW".to_string()) {
+            if caps.contains(&"CAP_NET_ADMIN".to_string())
+                || caps.contains(&"CAP_NET_RAW".to_string())
+            {
                 deps.push("network".to_string());
             }
         }

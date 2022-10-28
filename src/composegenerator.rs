@@ -61,8 +61,10 @@ where
     }
 }
 
-
-pub fn load_config_as_v4<R>(app_reader: R, installed_services: &Option<&Vec<String>>) -> Result<AppYmlV4, String>
+pub fn load_config_as_v4<R>(
+    app_reader: R,
+    installed_services: &Option<&Vec<String>>,
+) -> Result<AppYmlV4, String>
 where
     R: std::io::Read,
 {
@@ -107,7 +109,7 @@ where
 pub fn convert_config<R>(
     app_name: &str,
     app_reader: R,
-    port_map: &Option<HashMap::<String, HashMap<String, Vec<PortMapElement>>>>,
+    port_map: &Option<HashMap<String, HashMap<String, Vec<PortMapElement>>>>,
     installed_services: &Option<Vec<String>>,
 ) -> Result<ResultYml, String>
 where

@@ -14,7 +14,13 @@ pub async fn check_updates(
         return Err("Could not parse current version".to_string());
     }
     let current_version = current_version.unwrap();
-    match metadata.version_control.clone().unwrap_or_else(|| "github".to_string()).to_lowercase().as_str() {
+    match metadata
+        .version_control
+        .clone()
+        .unwrap_or_else(|| "github".to_string())
+        .to_lowercase()
+        .as_str()
+    {
         "github" => {
             if let Some(gh_token) = token {
                 octocrab::initialise(octocrab::OctocrabBuilder::new().personal_token(gh_token))
@@ -55,7 +61,7 @@ pub async fn check_updates(
             }
             let client = client.unwrap();
             super::gitlab::check_updates(&client, repo, &current_version, include_pre).await
-        },
-        _ => Err("Version control system not supported".to_string())
+        }
+        _ => Err("Version control system not supported".to_string()),
     }
 }
