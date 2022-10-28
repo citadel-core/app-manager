@@ -185,7 +185,8 @@ async fn main() {
             let mut ip_map: HashMap<String, String> = HashMap::new();
             let mut current_suffix: u8 = 20;
             if ip_addresses_map_file.exists() {
-                let ip_addresses_map_file = std::fs::File::open(ip_addresses_map_file.clone()).unwrap();
+                let ip_addresses_map_file =
+                    std::fs::File::open(ip_addresses_map_file.clone()).unwrap();
                 let ip_addresses_map: HashMap<String, String> =
                     serde_yaml::from_reader(ip_addresses_map_file).unwrap();
                 ip_map = ip_addresses_map;
@@ -370,7 +371,11 @@ async fn main() {
                 //Part 2: IP & Port assignment
                 {
                     for (service_name, service) in app_yml.services {
-                        let ip_name = format!("APP_{}_{}_IP", app_id.to_uppercase().replace("-", "_"), service_name.to_uppercase().replace("-", "_"));
+                        let ip_name = format!(
+                            "APP_{}_{}_IP",
+                            app_id.to_uppercase().replace("-", "_"),
+                            service_name.to_uppercase().replace("-", "_")
+                        );
                         if let std::collections::hash_map::Entry::Vacant(e) = ip_map.entry(ip_name)
                         {
                             if current_suffix == 255 {
@@ -451,8 +456,8 @@ async fn main() {
                 port_cache_map_file
                     .write_all(serde_yaml::to_string(&port_map_cache).unwrap().as_bytes())
                     .expect("Error writing port cache map file!");
-                let ip_map_file =
-                    std::fs::File::create(ip_addresses_map_file).expect("Error opening ip map file!");
+                let ip_map_file = std::fs::File::create(ip_addresses_map_file)
+                    .expect("Error opening ip map file!");
                 serde_yaml::to_writer(ip_map_file, &ip_map).expect("Error writing ip map file!");
             }
 
@@ -482,6 +487,7 @@ async fn main() {
             let apps = std::fs::read_dir(citadel_root.join("apps"))
                 .expect("Error reading apps directory!");
             let mut app_registry: Vec<OutputMetadata> = Vec::new();
+            let mut virtual_apps: HashMap<String, Vec<String>> = HashMap::new();
 
             let mut tor_entries: Vec<String> = Vec::new();
             for app in apps {
@@ -524,6 +530,18 @@ async fn main() {
                             metadata.default_password = Some("Please reboot your node, default password does not seem to be available yet.".to_string());
                         }
                     }
+                    if let Some(ref implements) = metadata.implements {
+                        if let std::collections::hash_map::Entry::Vacant(entry) =
+                            virtual_apps.entry(implements.clone())
+                        {
+                            entry.insert(vec![app_id.to_string()]);
+                        } else {
+                            virtual_apps
+                                .get_mut(implements)
+                                .unwrap()
+                                .push(app_id.to_string());
+                        }
+                    }
                     app_registry.push(metadata);
                 } else {
                     // Delete docker-compose.yml if it exists
@@ -539,12 +557,17 @@ async fn main() {
                 }
             }
 
-            // Part 7: Save registry
+            // Part 7: Save registry & virtual apps
             let app_registry_file = citadel_root.join("apps").join("registry.json");
             let mut app_registry_file =
                 std::fs::File::create(app_registry_file).expect("Error opening registry.json!");
             serde_json::to_writer(&mut app_registry_file, &app_registry)
                 .expect("Error writing registry.json!");
+            let virtual_apps_file = citadel_root.join("apps").join("virtual-apps.json");
+            let mut virtual_apps_file =
+                std::fs::File::create(virtual_apps_file).expect("Error opening virtual-apps.json!");
+            serde_json::to_writer(&mut virtual_apps_file, &virtual_apps)
+                .expect("Error writing virtual-apps.json!");
 
             let tor_entries_file = citadel_root.join("tor").join("torrc-apps");
             let tor_entries_file_2 = citadel_root.join("tor").join("torrc-apps-2");
