@@ -19,6 +19,7 @@ use citadel_apps::{
 use clap::{Parser, Subcommand};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::fs::OpenOptions;
 use std::io::{Read, Write};
 use std::path::Path;
 use std::process::exit;
@@ -180,6 +181,16 @@ async fn main() {
                 env_vars = dot_env.collect();
             }
 
+            let ip_addresses_map_file = citadel_root.join("apps").join("ips.yml");
+            let mut ip_map: HashMap<String, String> = HashMap::new();
+            let mut current_suffix: u8 = 20;
+            if ip_addresses_map_file.exists() {
+                let ip_addresses_map_file = std::fs::File::open(ip_addresses_map_file).unwrap();
+                let ip_addresses_map: HashMap<String, String> =
+                    serde_yaml::from_reader(ip_addresses_map_file).unwrap();
+                ip_map = ip_addresses_map;
+                current_suffix += ip_map.len() as u8;
+            }
             // Later used for port assignment
             let mut port_map = HashMap::<String, HashMap<String, Vec<PortMapElement>>>::new();
             let mut port_map_cache: PortCacheMap = HashMap::new();
@@ -353,9 +364,18 @@ async fn main() {
                     eprintln!("Warning: Citadel does not seem to be set up")
                 }
 
-                //Part 2: Port assignment
+                //Part 2: IP & Port assignment
                 {
                     for (service_name, service) in app_yml.services {
+                        let ip_name = format!("APP_{}_{}_IP", app_id, service_name);
+                        if !ip_map.contains_key(&ip_name) {
+                            if current_suffix == 255 {
+                                panic!("Too many apps!");
+                            }
+                            let ip = "10.21.21.".to_owned() + current_suffix.to_string().as_str();
+                            ip_map.insert(ip_name, ip);
+                            current_suffix += 1;
+                        }
                         if let Some(main_port) = service.port {
                             validate_port(
                                 app_id,
@@ -429,9 +449,24 @@ async fn main() {
                     .expect("Error writing port cache map file!");
             }
 
+            // Part 5: Save IP addresses
+            {
+                let mut env_string = String::new();
+                for (key, value) in ip_map {
+                    env_string += format!("{}={}\n", key, value).as_str();
+                }
+                let mut env_file = OpenOptions::new()
+                    .append(true)
+                    .open(citadel_root.join("env"))
+                    .expect("Error opening env file!");
+                env_file
+                    .write_all(env_string.as_bytes())
+                    .expect("Error writing env file!");
+            }
+
+            // Part 6: Loop through the appps again and run the actual conversion process
             let apps = std::fs::read_dir(citadel_root.join("apps"))
-                .expect("Error reading apps directory!");
-            // Part 5: Loop through the appps again and run the actual conversion process
+            .expect("Error reading apps directory!");
             let mut app_registry: Vec<OutputMetadata> = Vec::new();
 
             let mut tor_entries: Vec<String> = Vec::new();
@@ -490,6 +525,7 @@ async fn main() {
                 }
             }
 
+            // Part 7: Save registry
             let app_registry_file = citadel_root.join("apps").join("registry.json");
             let mut app_registry_file =
                 std::fs::File::create(app_registry_file).expect("Error opening registry.json!");
