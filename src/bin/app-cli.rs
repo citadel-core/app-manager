@@ -19,7 +19,6 @@ use citadel_apps::{
 use clap::{Parser, Subcommand};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::fs::OpenOptions;
 use std::io::{Read, Write};
 use std::path::Path;
 use std::process::exit;
@@ -150,7 +149,8 @@ async fn main() {
             let apps = apps.filter(|entry| {
                 let entry = entry.as_ref().expect("Error reading app directory!");
                 let path = entry.path();
-                return path.is_dir();
+
+                path.is_dir()
             });
             let mut services = Vec::<String>::new();
             let user_json = std::fs::File::open(citadel_root.join("db").join("user.json"));
@@ -203,38 +203,68 @@ async fn main() {
                 port_map_cache = port_cache_map_file;
             }
 
-            let mut validate_port = |app: &str,
-                                     container: &str,
-                                     suggested_port: u16,
-                                     priority: &PortPriority,
-                                     dynamic: bool,
-                                     implements: Option<String>|
-             -> () {
-                let get_new_port = |app: &str, container: &str, mut suggested_port: u16| -> u16 {
-                    while RESERVED_PORTS.contains(&suggested_port)
-                        || port_map_cache.contains_key(&suggested_port)
-                    {
-                        if let Some(cache_entry) = port_map_cache.get(&suggested_port) {
-                            if cache_entry.app == app && cache_entry.container == container {
-                                return suggested_port;
+            let mut validate_port =
+                |app: &str,
+                 container: &str,
+                 suggested_port: u16,
+                 priority: &PortPriority,
+                 dynamic: bool,
+                 implements: Option<String>| {
+                    let get_new_port =
+                        |app: &str, container: &str, mut suggested_port: u16| -> u16 {
+                            while RESERVED_PORTS.contains(&suggested_port)
+                                || port_map_cache.contains_key(&suggested_port)
+                            {
+                                if let Some(cache_entry) = port_map_cache.get(&suggested_port) {
+                                    if cache_entry.app == app && cache_entry.container == container
+                                    {
+                                        return suggested_port;
+                                    }
+                                }
+                                suggested_port += 1;
                             }
+
+                            suggested_port
+                        };
+                    if let Some(key) = port_map_cache.get(&suggested_port) {
+                        if (key.app == app && key.container == container)
+                            || (key.implements == implements && container == "service")
+                        {
+                            return;
                         }
-                        suggested_port += 1;
-                    }
-                    return suggested_port;
-                };
-                if let Some(key) = port_map_cache.get(&suggested_port) {
-                    if (key.app == app && key.container == container)
-                        || (key.implements == implements && container == "service")
-                    {
-                        return;
-                    }
-                    if key.priority > *priority {
-                        // Move the existing app to a new port
-                        let new_port = get_new_port(&key.app, &key.container, suggested_port);
-                        let new_port_map = port_map_cache.remove(&suggested_port).unwrap();
-                        port_map_cache.insert(new_port, new_port_map);
-                        // And insert the new app
+                        if key.priority > *priority {
+                            // Move the existing app to a new port
+                            let new_port = get_new_port(&key.app, &key.container, suggested_port);
+                            let new_port_map = port_map_cache.remove(&suggested_port).unwrap();
+                            port_map_cache.insert(new_port, new_port_map);
+                            // And insert the new app
+                            port_map_cache.insert(
+                                suggested_port,
+                                PortCacheMapEntry {
+                                    app: app.to_string(),
+                                    internal_port: suggested_port,
+                                    container: container.to_string(),
+                                    dynamic,
+                                    implements,
+                                    priority: *priority,
+                                },
+                            );
+                        } else {
+                            // Move the new app to a new port
+                            let new_port = get_new_port(app, container, suggested_port);
+                            port_map_cache.insert(
+                                new_port,
+                                PortCacheMapEntry {
+                                    app: app.to_string(),
+                                    internal_port: suggested_port,
+                                    container: container.to_string(),
+                                    dynamic,
+                                    implements,
+                                    priority: *priority,
+                                },
+                            );
+                        }
+                    } else {
                         port_map_cache.insert(
                             suggested_port,
                             PortCacheMapEntry {
@@ -246,35 +276,8 @@ async fn main() {
                                 priority: *priority,
                             },
                         );
-                    } else {
-                        // Move the new app to a new port
-                        let new_port = get_new_port(app, container, suggested_port);
-                        port_map_cache.insert(
-                            new_port,
-                            PortCacheMapEntry {
-                                app: app.to_string(),
-                                internal_port: suggested_port,
-                                container: container.to_string(),
-                                dynamic,
-                                implements,
-                                priority: *priority,
-                            },
-                        );
                     }
-                } else {
-                    port_map_cache.insert(
-                        suggested_port,
-                        PortCacheMapEntry {
-                            app: app.to_string(),
-                            internal_port: suggested_port,
-                            container: container.to_string(),
-                            dynamic,
-                            implements,
-                            priority: *priority,
-                        },
-                    );
-                }
-            };
+                };
 
             for app in apps {
                 let app = app.expect("Error reading app directory!");
@@ -328,19 +331,19 @@ async fn main() {
                         let permissions = flatten(app_yml.metadata.permissions.clone());
                         for item in &env_vars {
                             let (key, val) = item.as_ref().expect("Env var invalid");
-                            if is_allowed_by_permissions(app_id, &key, &permissions) {
+                            if is_allowed_by_permissions(app_id, key, &permissions) {
                                 context.insert(key, &val);
                             }
                         }
                         context.insert(
                             "APP_SEED",
-                            &derive_entropy(&citadel_seed, format!("app-{}-seed", app_id).as_str()),
+                            &derive_entropy(citadel_seed, format!("app-{}-seed", app_id).as_str()),
                         );
                         for i in 1..6 {
                             context.insert(
                                 format!("APP_SEED_{}", i),
                                 &derive_entropy(
-                                    &citadel_seed,
+                                    citadel_seed,
                                     format!("app-{}-seed{}", app_id, i).as_str(),
                                 ),
                             );
@@ -368,12 +371,13 @@ async fn main() {
                 {
                     for (service_name, service) in app_yml.services {
                         let ip_name = format!("APP_{}_{}_IP", app_id, service_name);
-                        if !ip_map.contains_key(&ip_name) {
+                        if let std::collections::hash_map::Entry::Vacant(e) = ip_map.entry(ip_name)
+                        {
                             if current_suffix == 255 {
                                 panic!("Too many apps!");
                             }
                             let ip = "10.21.21.".to_owned() + current_suffix.to_string().as_str();
-                            ip_map.insert(ip_name, ip);
+                            e.insert(ip);
                             current_suffix += 1;
                         }
                         if let Some(main_port) = service.port {
@@ -510,7 +514,7 @@ async fn main() {
                     if metadata.default_password.clone().unwrap_or_default() == "$APP_SEED" {
                         if let Some(ref citadel_seed) = citadel_seed {
                             metadata.default_password = Some(derive_entropy(
-                                &citadel_seed,
+                                citadel_seed,
                                 format!("app-{}-seed", app_id).as_str(),
                             ));
                         } else {
