@@ -217,7 +217,6 @@ dependencies = [
  "hex",
  "hmac-sha256",
  "lazy_static",
- "log",
  "octocrab",
  "pretty_assertions",
  "regex",

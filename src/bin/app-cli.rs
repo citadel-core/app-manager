@@ -598,7 +598,7 @@ async fn main() {
                 println!("{}", serde_yaml::to_string(&schema).unwrap());
             }
             _ => {
-                log::error!("Unsupported schema version!");
+                eprintln!("Unsupported schema version!");
                 exit(1);
             }
         },
@@ -699,7 +699,6 @@ async fn main() {
                         .expect("Error saving app definition!");
                 }
             }
-            log::info!("App is valid!");
         }
     }
 }
