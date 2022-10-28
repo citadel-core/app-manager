@@ -64,12 +64,13 @@ pub struct OutputMetadata {
     /// If compatible is false, the dependencies that are missing
     #[serde(skip_serializing_if = "Option::is_none")]
     pub missing_dependencies: Option<Vec<Permissions>>,
+    pub port: u16,
+    pub internal_port: u16,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct ResultYml {
-    pub port: u16,
     pub new_tor_entries: String,
     pub new_i2p_entries: String,
     pub spec: ComposeSpecification,

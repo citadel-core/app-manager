@@ -605,6 +605,8 @@ pub fn convert_config(
         version_control: app.metadata.version_control,
         compatible: missing_deps.is_empty(),
         missing_dependencies: None,
+        port: main_port_host.unwrap_or(main_port),
+        internal_port: main_port,
     };
     if !missing_deps.is_empty() {
         metadata.missing_dependencies = Some(missing_deps);
@@ -631,7 +633,6 @@ pub fn convert_config(
             main_port,
             &ips,
         ),
-        port: main_port_host.unwrap_or(main_port),
         metadata,
     };
 
@@ -692,7 +693,6 @@ mod test {
         let result = convert_config("example-app", example_app, &None, &None, &None);
         assert!(result.is_ok());
         let expected_result = ResultYml {
-            port: 3000,
             spec: ComposeSpecification {
                 services: Some(bmap! {
                     "main" => Service {
@@ -738,6 +738,8 @@ mod test {
                 description: "This is an example app that provides multiple features that you need on your node. These features include:\n\n- Example\n- Example\n- Example".to_string(),
                 missing_dependencies: Some(vec![Permissions::OneDependency("lnd".to_string())]),
                 compatible: false,
+                port: 3000,
+                internal_port: 3000,
                 ..Default::default()
             },
             new_tor_entries: "HiddenServiceDir /var/lib/tor/app-example-app\nHiddenServicePort 80 <app-example-app-main-ip>:3000\n".to_string(),
