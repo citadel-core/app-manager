@@ -179,11 +179,13 @@ pub fn convert_config(
     app: AppYmlV3,
     port_map: &Option<HashMap<String, HashMap<String, Vec<PortMapElement>>>>,
     installed_services: &Vec<String>,
+    ip_addresses: &Option<HashMap<String, String>>,
 ) -> Result<ResultYml, String> {
     convert_config_v4(
         app_name,
         v3_to_v4(app, &Some(installed_services)),
         port_map,
-        &None,
+        &Some(installed_services.clone()),
+        ip_addresses,
     )
 }

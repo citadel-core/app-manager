@@ -470,7 +470,7 @@ async fn main() {
                         .read_to_string(&mut env_string)
                         .expect("Error reading env file!");
                 }
-                for (key, value) in ip_map {
+                for (key, value) in &ip_map {
                     let to_append = format!("{}={}", key, value);
                     if !env_string.contains(&to_append) {
                         env_string.push_str(&(to_append + "\n"));
@@ -511,6 +511,7 @@ async fn main() {
                     app_yml,
                     &Some(port_map.clone()),
                     &Some(services.clone()),
+                    &Some(ip_map.clone()),
                 );
                 if let Ok(result_data) = conversion_result {
                     let mut docker_compose_yml_file =
@@ -649,7 +650,7 @@ async fn main() {
         #[cfg(feature = "dev-tools")]
         SubCommand::Validate { app, app_name } => {
             let app_yml = std::fs::File::open(app).expect("Error opening app definition!");
-            convert_config(&app_name, &app_yml, &None, &None).expect("App is invalid");
+            convert_config(&app_name, &app_yml, &None, &None, &None).expect("App is invalid");
             println!("App is valid!");
         }
         #[cfg(feature = "dev-tools")]

@@ -111,6 +111,7 @@ pub fn convert_config<R>(
     app_reader: R,
     port_map: &Option<HashMap<String, HashMap<String, Vec<PortMapElement>>>>,
     installed_services: &Option<Vec<String>>,
+    ip_addresses: &Option<HashMap<String, String>>,
 ) -> Result<ResultYml, String>
 where
     R: std::io::Read,
@@ -118,11 +119,11 @@ where
     let app_yml = load_config(app_reader).expect("Failed to parse app.yml");
     match app_yml {
         AppYmlFile::V4(app_definition) => {
-            v4::convert::convert_config(app_name, app_definition, port_map, installed_services)
+            v4::convert::convert_config(app_name, app_definition, port_map, installed_services, ip_addresses)
         }
         AppYmlFile::V3(app_definition) => {
             if let Some(installed_services) = installed_services {
-                v3::convert::convert_config(app_name, app_definition, port_map, installed_services)
+                v3::convert::convert_config(app_name, app_definition, port_map, installed_services, ip_addresses)
             } else {
                 Err("No installed services defined. If you are trying to validate an app, please make sure it is an app.yml v4 or later.".to_string())
             }

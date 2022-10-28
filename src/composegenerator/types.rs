@@ -71,6 +71,7 @@ pub struct OutputMetadata {
 pub struct ResultYml {
     pub port: u16,
     pub new_tor_entries: String,
+    pub new_i2p_entries: String,
     pub spec: ComposeSpecification,
     pub metadata: OutputMetadata,
 }
