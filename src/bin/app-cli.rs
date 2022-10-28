@@ -370,7 +370,7 @@ async fn main() {
                 //Part 2: IP & Port assignment
                 {
                     for (service_name, service) in app_yml.services {
-                        let ip_name = format!("APP_{}_{}_IP", app_id, service_name);
+                        let ip_name = format!("APP_{}_{}_IP", app_id.to_uppercase(), service_name.to_uppercase());
                         if let std::collections::hash_map::Entry::Vacant(e) = ip_map.entry(ip_name)
                         {
                             if current_suffix == 255 {
@@ -457,7 +457,7 @@ async fn main() {
             {
                 let mut env_string = String::new();
                 // Load the existing env file
-                if let Ok(mut env_file) = std::fs::File::open(citadel_root.join("env")) {
+                if let Ok(mut env_file) = std::fs::File::open(citadel_root.join(".env")) {
                     env_file
                         .read_to_string(&mut env_string)
                         .expect("Error reading env file!");
@@ -468,7 +468,7 @@ async fn main() {
                         env_string.push_str(&(to_append + "\n"));
                     }
                 }
-                let mut env_file = std::fs::File::create(citadel_root.join("env"))
+                let mut env_file = std::fs::File::create(citadel_root.join(".env"))
                     .expect("Error opening env file!");
                 env_file
                     .write_all(env_string.as_bytes())
