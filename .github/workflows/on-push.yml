@@ -1,41 +1,115 @@
-name: Create and publish a Docker image
+name: Build on push
+
+permissions:
+  packages: write
+
 on:
   push:
-    branches: ['main']
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+    branches:
+      - main
+
 jobs:
-  build-and-push-image:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
+  test:
+    name: Run tests
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        toolchain: [stable, beta, nightly]
+
     steps:
-      - name: Checkout repository
+      - name: Checkout project
         uses: actions/checkout@v3
-      - name: Log in to the Container registry
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+            toolchain: ${{ matrix.toolchain }}
+            components: rustfmt, clippy
+
+      - name: Run tests
+        run: cargo test
+
+  build-amd64:
+    name: Build image (AMD64)
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v3
+
+      - name: Set env variables
+        run: |
+          echo "BRANCH=$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//-/g')" >> $GITHUB_ENV
+          IMAGE_NAME="${GITHUB_REPOSITORY#*/}"
+          echo "IMAGE_NAME=${IMAGE_NAME//docker-/}" >> $GITHUB_ENV
+
+      - name: Login to GitHub Container Registry
         uses: docker/login-action@v2
         with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
 
-      - name: Set up Docker Buildx
+      - name: Setup Docker buildx action
         uses: docker/setup-buildx-action@v2
 
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@v2
+      - name: Run Docker buildx
+        run: |
+                docker buildx build \
+                --platform linux/amd64 \
+                --tag ghcr.io/${{ github.repository_owner }}/$IMAGE_NAME:$BRANCH-amd64 \
+                --output "type=registry" ./
+  build-arm64:
+    name: Build image (ARM64)
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v3
+
+      - name: Set env variables
+        run: |
+          echo "BRANCH=$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//-/g')" >> $GITHUB_ENV
+          IMAGE_NAME="${GITHUB_REPOSITORY#*/}"
+          echo "IMAGE_NAME=${IMAGE_NAME//docker-/}" >> $GITHUB_ENV
+
+      - name: Login to Docker Hub
+        run: echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
+
+      - name: Run Docker buildx
+        run: |
+                docker buildx build \
+                --platform linux/arm64 \
+                --network host \
+                --tag ghcr.io/${{ github.repository_owner }}/$IMAGE_NAME:$BRANCH-arm64 \
+                --output "type=registry" ./
+
+  create-manifest:
+    name: Create two-architecture manifest
+    runs-on: ubuntu-22.04
+    needs:
+      - build-amd64
+      - build-arm64
+      # Don't push broken builds
+      - test
+
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v3
+
+      - name: Set env variables
+        run: |
+          echo "BRANCH=$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//-/g')" >> $GITHUB_ENV
+          IMAGE_NAME="${GITHUB_REPOSITORY#*/}"
+          echo "IMAGE_NAME=${IMAGE_NAME//docker-/}" >> $GITHUB_ENV
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2 
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v2
-        with:
-          context: .
-          push: true
-          platforms: linux/amd64,linux/arm64
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create final manifest
+        run: ./create-manifest.sh "ghcr.io/${{ github.repository_owner }}/${IMAGE_NAME}" "${BRANCH}"
