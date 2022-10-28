@@ -40,11 +40,10 @@ name = "app-cli"
 required-features = ["cli"]
 
 [features]
-cli = ["dep:clap", "dep:env_logger", "dep:tokio", "dep:dotenv"]
+cli = ["dep:clap", "dep:env_logger", "dep:tokio", "dep:dotenv", "dep:tera"]
 umbrel = []
 dev-tools = ["umbrel", "schema", "docker", "dep:octocrab", "dep:semver", "dep:gitlab", "dep:url"]
 schema = ["dep:schemars"]
-preprocess = ["dep:tera"]
 docker = ["dep:bollard", "dep:futures-util"]
 
 [dev-dependencies]

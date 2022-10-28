@@ -21,7 +21,7 @@ pub struct PortsDefinition {
     pub udp: Option<HashMap<u16, u16>>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum PortPriority {
     /// Outside port doesn't matter

@@ -1,11 +1,8 @@
-use serde_json::{Map, Value};
-
 use super::{
     permissions, types,
     types::PortMapElement,
-    utils::{get_host_port, get_main_container, validate_cmd, validate_port_map_app},
+    utils::{get_host_port, get_main_container, validate_cmd},
 };
-use crate::{utils::{find_env_vars, flatten}, composegenerator::types::OutputMetadata};
 use crate::{
     bmap,
     composegenerator::{
@@ -13,6 +10,10 @@ use crate::{
         output::types::{ComposeSpecification, NetworkEntry, Service},
         types::Permissions,
     },
+};
+use crate::{
+    composegenerator::types::OutputMetadata,
+    utils::{find_env_vars, flatten},
 };
 use std::collections::{BTreeMap, HashMap};
 
@@ -401,10 +402,7 @@ fn get_hidden_services(
     result
 }
 
-fn get_missing_dependencies(
-    required: &[Permissions],
-    installed: &[String],
-) -> Vec<Permissions> {
+fn get_missing_dependencies(required: &[Permissions], installed: &[String]) -> Vec<Permissions> {
     let mut missing = Vec::<Permissions>::new();
     for requirement in required {
         match requirement {
@@ -426,7 +424,7 @@ fn get_missing_dependencies(
 pub fn convert_config(
     app_name: &str,
     app: types::AppYml,
-    port_map: &Option<Map<String, Value>>,
+    port_map: &Option<HashMap<String, HashMap<String, Vec<PortMapElement>>>>,
     installed_services: &Option<Vec<String>>,
 ) -> Result<ResultYml, String> {
     let mut spec: ComposeSpecification = ComposeSpecification {
@@ -436,19 +434,25 @@ pub fn convert_config(
     let mut permissions = flatten(app.metadata.permissions.clone());
 
     let main_service = get_main_container(&app)?;
-    let mut converted_port_map: Option<HashMap<String, Vec<PortMapElement>>> = None;
-    if let Some(real_port_map) = port_map {
-        let conversion_result = validate_port_map_app(real_port_map);
-        match conversion_result {
-            Err(conversion_error) => {
-                return Err(conversion_error.to_string());
+    let mut app_port_map: Option<HashMap<String, Vec<PortMapElement>>> = None;
+    if let Some(port_map) = port_map {
+        if let Some(app_port_map_entry) = port_map.get(app_name) {
+            let mut entry = app_port_map_entry.clone();
+            if let Some(ref implements) = app.metadata.implements {
+                if let Some(implement_port_map_entry) = port_map.get(implements) {
+                    for (key, value) in implement_port_map_entry {
+                        if entry.get(key).is_none() {
+                            entry.insert(key.to_owned(), value.clone());
+                        } else {
+                            entry.get_mut(key).unwrap().extend(value.clone());
+                        }
+                    }
+                }
             }
-            Ok(conversion_result) => {
-                converted_port_map = Some(conversion_result);
-            }
+            app_port_map = Some(app_port_map_entry.clone());
         }
     }
-    let main_port = get_main_port(&app.services, &main_service, &converted_port_map)?;
+    let main_port = get_main_port(&app.services, &main_service, &app_port_map)?;
 
     // Required for dynamic ports
     let env_var = format!(
@@ -489,7 +493,7 @@ pub fn convert_config(
         )?;
     }
     // We can now finalize the process by parsing some of the remaining values
-    configure_ports(&app.services, &main_service, &mut spec, &converted_port_map)?;
+    configure_ports(&app.services, &main_service, &mut spec, &app_port_map)?;
 
     let ip_address_result = define_ip_addresses(app_name, &app.services, &main_service, &mut spec);
 
@@ -500,7 +504,7 @@ pub fn convert_config(
     convert_volumes(&app.services, &permissions, &mut spec)?;
 
     let mut main_port_host: Option<u16> = None;
-    if let Some(converted_map) = converted_port_map {
+    if let Some(converted_map) = app_port_map {
         main_port_host = Some(
             get_host_port(converted_map.get(&main_service).unwrap(), main_port)
                 .unwrap()
@@ -555,7 +559,7 @@ mod test {
         bmap,
         composegenerator::{
             output::types::{ComposeSpecification, NetworkEntry, Service},
-            types::{Permissions, ResultYml, OutputMetadata},
+            types::{OutputMetadata, Permissions, ResultYml},
             v4::types::{AppYml, Container, InputMetadata},
         },
         map,
