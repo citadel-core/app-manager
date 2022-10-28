@@ -185,7 +185,7 @@ async fn main() {
             let mut ip_map: HashMap<String, String> = HashMap::new();
             let mut current_suffix: u8 = 20;
             if ip_addresses_map_file.exists() {
-                let ip_addresses_map_file = std::fs::File::open(ip_addresses_map_file).unwrap();
+                let ip_addresses_map_file = std::fs::File::open(ip_addresses_map_file.clone()).unwrap();
                 let ip_addresses_map: HashMap<String, String> =
                     serde_yaml::from_reader(ip_addresses_map_file).unwrap();
                 ip_map = ip_addresses_map;
@@ -451,6 +451,9 @@ async fn main() {
                 port_cache_map_file
                     .write_all(serde_yaml::to_string(&port_map_cache).unwrap().as_bytes())
                     .expect("Error writing port cache map file!");
+                let ip_map_file =
+                    std::fs::File::create(ip_addresses_map_file).expect("Error opening ip map file!");
+                serde_yaml::to_writer(ip_map_file, &ip_map).expect("Error writing ip map file!");
             }
 
             // Part 5: Save IP addresses
