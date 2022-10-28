@@ -452,12 +452,19 @@ async fn main() {
             // Part 5: Save IP addresses
             {
                 let mut env_string = String::new();
-                for (key, value) in ip_map {
-                    env_string += format!("{}={}\n", key, value).as_str();
+                // Load the existing env file
+                if let Ok(mut env_file) = std::fs::File::open(citadel_root.join("env")) {
+                    env_file
+                        .read_to_string(&mut env_string)
+                        .expect("Error reading env file!");
                 }
-                let mut env_file = OpenOptions::new()
-                    .append(true)
-                    .open(citadel_root.join("env"))
+                for (key, value) in ip_map {
+                    let to_append = format!("{}={}", key, value);
+                    if !env_string.contains(&to_append) {
+                        env_string.push_str(&(to_append + "\n"));
+                    }
+                }
+                let mut env_file = std::fs::File::create(citadel_root.join("env"))
                     .expect("Error opening env file!");
                 env_file
                     .write_all(env_string.as_bytes())
