@@ -463,9 +463,10 @@ async fn main() {
                         .expect("Error reading env file!");
                 }
                 for (key, value) in ip_map {
-                    let to_append = format!("{}={}", key, value);
+                    let to_append = format!("{}={}
+", key, value);
                     if !env_string.contains(&to_append) {
-                        env_string.push_str(&(to_append + "\n"));
+                        env_string.push_str(&to_append);
                     }
                 }
                 let mut env_file = std::fs::File::create(citadel_root.join(".env"))
