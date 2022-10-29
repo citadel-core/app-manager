@@ -376,8 +376,8 @@ async fn main() {
                     for (service_name, service) in app_yml.services {
                         let ip_name = format!(
                             "APP_{}_{}_IP",
-                            app_id.to_uppercase().replace("-", "_"),
-                            service_name.to_uppercase().replace("-", "_")
+                            app_id.to_uppercase().replace('-', "_"),
+                            service_name.to_uppercase().replace('-', "_")
                         );
                         if let std::collections::hash_map::Entry::Vacant(e) = ip_map.entry(ip_name)
                         {
