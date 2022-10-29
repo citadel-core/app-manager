@@ -306,9 +306,12 @@ async fn main() {
                             .expect("Error saving file!");
                     }
                 }
-                let app_yml = std::fs::File::open(app.path().join("app.yml"))
-                    .expect("Error opening app definition!");
-                let app_yml = load_config_as_v4(app_yml, &Some(&services))
+                let app_yml = std::fs::File::open(app.path().join("app.yml"));
+                if let Err(e) = app_yml {
+                    eprintln!("Error opening app definition: {}", e);
+                    continue;
+                }
+                let app_yml = load_config_as_v4(app_yml.unwrap(), &Some(&services))
                     .expect("Error parsing app definition!");
 
                 if !env_vars.is_empty() && citadel_seed.is_some() {
