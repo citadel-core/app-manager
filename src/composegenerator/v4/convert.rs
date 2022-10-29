@@ -360,11 +360,12 @@ fn get_hidden_services(
             let hidden_service_string = format!(
                 "HiddenServiceDir /var/lib/tor/app-{}\nHiddenServicePort 80 {}:{}\n",
                 app_name_slug,
-                ip_addresses.get(&format!(
-                    "APP_{}_{}_IP",
-                    app_name_uppercase, service_name_uppercase
-                ))
-                .unwrap_or(&format!("<app-{}-{}-ip>", app_name_slug, service_name_slug)),
+                ip_addresses
+                    .get(&format!(
+                        "APP_{}_{}_IP",
+                        app_name_uppercase, service_name_uppercase
+                    ))
+                    .unwrap_or(&format!("<app-{}-{}-ip>", app_name_slug, service_name_slug)),
                 main_port
             );
             result += hidden_service_string.as_str();
@@ -383,14 +384,15 @@ fn get_hidden_services(
                         let port_string = format!(
                             "HiddenServicePort {} {}:{}\n",
                             port.0,
-                            ip_addresses.get(&format!(
-                                "APP_{}_{}_IP",
-                                app_name_uppercase, service_name_uppercase
-                            ))
-                            .unwrap_or(&format!(
-                                "<app-{}-{}-ip>",
-                                app_name_slug, service_name_slug
-                            )),
+                            ip_addresses
+                                .get(&format!(
+                                    "APP_{}_{}_IP",
+                                    app_name_uppercase, service_name_uppercase
+                                ))
+                                .unwrap_or(&format!(
+                                    "<app-{}-{}-ip>",
+                                    app_name_slug, service_name_slug
+                                )),
                             port.1
                         );
                         result += port_string.as_str();
@@ -408,14 +410,15 @@ fn get_hidden_services(
                             let port_string = format!(
                                 "HiddenServicePort {} {}:{}\n",
                                 port.0,
-                                ip_addresses.get(&format!(
-                                    "APP_{}_{}_IP",
-                                    app_name_uppercase, service_name_uppercase
-                                ))
-                                .unwrap_or(&format!(
-                                    "<app-{}-{}-ip>",
-                                    app_name_slug, service_name_slug
-                                )),
+                                ip_addresses
+                                    .get(&format!(
+                                        "APP_{}_{}_IP",
+                                        app_name_uppercase, service_name_uppercase
+                                    ))
+                                    .unwrap_or(&format!(
+                                        "<app-{}-{}-ip>",
+                                        app_name_slug, service_name_slug
+                                    )),
                                 port.1
                             );
                             result += port_string.as_str();
@@ -451,11 +454,12 @@ fn get_i2p_tunnels(
                 "[app-{}-{}]\nhost = {}\nport = {}\nkeys = app-{}-{}.dat\n",
                 app_name_slug,
                 service_name_slug,
-                ip_addresses.get(&format!(
-                    "APP_{}_{}_IP",
-                    app_name_uppercase, service_name_uppercase
-                ))
-                .unwrap_or(&format!("<app-{}-{}-ip>", app_name_slug, service_name_slug)),
+                ip_addresses
+                    .get(&format!(
+                        "APP_{}_{}_IP",
+                        app_name_uppercase, service_name_uppercase
+                    ))
+                    .unwrap_or(&format!("<app-{}-{}-ip>", app_name_slug, service_name_slug)),
                 main_port,
                 app_name_slug,
                 service_name_slug
@@ -626,13 +630,7 @@ pub fn convert_config(
             main_port,
             &ips,
         ),
-        new_i2p_entries: get_i2p_tunnels(
-            app_name,
-            app.services,
-            &main_service,
-            main_port,
-            &ips,
-        ),
+        new_i2p_entries: get_i2p_tunnels(app_name, app.services, &main_service, main_port, &ips),
         metadata,
     };
 
