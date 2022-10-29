@@ -606,9 +606,9 @@ async fn main() {
                         current_file = 1;
                     }
                 }
-                let i2p_entries_dir = citadel_root.join("i2p").join("tunnels.conf.d");
+                let i2p_entries_dir = citadel_root.join("i2p").join("tunnels.d");
                 std::fs::create_dir_all(i2p_entries_dir.clone())
-                    .expect("Error creating i2p tunnels.conf.d directory!");
+                    .expect("Error creating i2p tunnels.d directory!");
                 let i2p_entries_file = i2p_entries_dir.join("apps.conf");
                 let mut i2p_entries_file =
                     std::fs::File::create(i2p_entries_file).expect("Error opening apps.conf!");
