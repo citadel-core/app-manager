@@ -1,3 +1,5 @@
+#[cfg(feature = "cli")]
+pub mod cli;
 pub mod composegenerator;
 #[cfg(feature = "dev-tools")]
 pub mod github;
