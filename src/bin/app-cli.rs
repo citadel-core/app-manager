@@ -493,6 +493,7 @@ async fn main() {
             let mut virtual_apps: HashMap<String, Vec<String>> = HashMap::new();
 
             let mut tor_entries: Vec<String> = Vec::new();
+            let mut i2p_entries: Vec<String> = Vec::new();
             for app in apps {
                 let app = app.expect("Error reading app directory!");
                 let app_id = app.file_name();
@@ -523,6 +524,7 @@ async fn main() {
                     serde_yaml::to_writer(&mut docker_compose_yml_file, &result_data.spec)
                         .expect("Error writing docker-compose.yml!");
                     tor_entries.push(result_data.new_tor_entries + "\n");
+                    i2p_entries.push(result_data.new_i2p_entries + "\n");
                     let mut metadata = result_data.metadata;
                     if metadata.default_password.clone().unwrap_or_default() == "$APP_SEED" {
                         if let Some(ref citadel_seed) = citadel_seed {
@@ -562,46 +564,57 @@ async fn main() {
             }
 
             // Part 7: Save registry & virtual apps
-            let app_registry_file = citadel_root.join("apps").join("registry.json");
-            let mut app_registry_file =
-                std::fs::File::create(app_registry_file).expect("Error opening registry.json!");
-            serde_json::to_writer(&mut app_registry_file, &app_registry)
-                .expect("Error writing registry.json!");
-            let virtual_apps_file = citadel_root.join("apps").join("virtual-apps.json");
-            let mut virtual_apps_file =
-                std::fs::File::create(virtual_apps_file).expect("Error opening virtual-apps.json!");
-            serde_json::to_writer(&mut virtual_apps_file, &virtual_apps)
-                .expect("Error writing virtual-apps.json!");
+            {
+                let app_registry_file = citadel_root.join("apps").join("registry.json");
+                let mut app_registry_file =
+                    std::fs::File::create(app_registry_file).expect("Error opening registry.json!");
+                serde_json::to_writer(&mut app_registry_file, &app_registry)
+                    .expect("Error writing registry.json!");
+                let virtual_apps_file = citadel_root.join("apps").join("virtual-apps.json");
+                let mut virtual_apps_file = std::fs::File::create(virtual_apps_file)
+                    .expect("Error opening virtual-apps.json!");
+                serde_json::to_writer(&mut virtual_apps_file, &virtual_apps)
+                    .expect("Error writing virtual-apps.json!");
 
-            let tor_entries_file = citadel_root.join("tor").join("torrc-apps");
-            let tor_entries_file_2 = citadel_root.join("tor").join("torrc-apps-2");
-            let tor_entries_file_3 = citadel_root.join("tor").join("torrc-apps-3");
-            let mut tor_entries_file =
-                std::fs::File::create(tor_entries_file).expect("Error opening torrc-apps!");
-            let mut tor_entries_file_2 =
-                std::fs::File::create(tor_entries_file_2).expect("Error opening torrc-apps-2!");
-            let mut tor_entries_file_3 =
-                std::fs::File::create(tor_entries_file_3).expect("Error opening torrc-apps-3!");
-            // Split entries into 3 groups of the same size
-            let mut current_file = 1;
+                let tor_entries_file = citadel_root.join("tor").join("torrc-apps");
+                let tor_entries_file_2 = citadel_root.join("tor").join("torrc-apps-2");
+                let tor_entries_file_3 = citadel_root.join("tor").join("torrc-apps-3");
+                let mut tor_entries_file =
+                    std::fs::File::create(tor_entries_file).expect("Error opening torrc-apps!");
+                let mut tor_entries_file_2 =
+                    std::fs::File::create(tor_entries_file_2).expect("Error opening torrc-apps-2!");
+                let mut tor_entries_file_3 =
+                    std::fs::File::create(tor_entries_file_3).expect("Error opening torrc-apps-3!");
+                // Split entries into 3 groups of the same size
+                let mut current_file = 1;
 
-            for entry in tor_entries {
-                if current_file == 1 {
-                    tor_entries_file
-                        .write_all(entry.as_bytes())
-                        .expect("Error writing torrc-apps!");
-                    current_file = 2;
-                } else if current_file == 2 {
-                    tor_entries_file_2
-                        .write_all(entry.as_bytes())
-                        .expect("Error writing torrc-apps-2!");
-                    current_file = 3;
-                } else if current_file == 3 {
-                    tor_entries_file_3
-                        .write_all(entry.as_bytes())
-                        .expect("Error writing torrc-apps-3!");
-                    current_file = 1;
+                for entry in tor_entries {
+                    if current_file == 1 {
+                        tor_entries_file
+                            .write_all(entry.as_bytes())
+                            .expect("Error writing torrc-apps!");
+                        current_file = 2;
+                    } else if current_file == 2 {
+                        tor_entries_file_2
+                            .write_all(entry.as_bytes())
+                            .expect("Error writing torrc-apps-2!");
+                        current_file = 3;
+                    } else if current_file == 3 {
+                        tor_entries_file_3
+                            .write_all(entry.as_bytes())
+                            .expect("Error writing torrc-apps-3!");
+                        current_file = 1;
+                    }
                 }
+                let i2p_entries_dir = citadel_root.join("i2p").join("tunnels.conf.d");
+                std::fs::create_dir_all(i2p_entries_dir.clone())
+                    .expect("Error creating i2p tunnels.conf.d directory!");
+                let i2p_entries_file = i2p_entries_dir.join("apps.conf");
+                let mut i2p_entries_file =
+                    std::fs::File::create(i2p_entries_file).expect("Error opening apps.conf!");
+                i2p_entries_file
+                    .write_all(i2p_entries.join("\n").as_bytes())
+                    .expect("Error writing apps.conf!");
             }
         }
         #[cfg(feature = "dev-tools")]
