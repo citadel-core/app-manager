@@ -23,6 +23,11 @@ enum SubCommand {
         /// The citadel root dir
         citadel_root: String,
     },
+    /// Download all apps from the sources.list file
+    Download {
+        /// The citadel root dir
+        citadel_root: String,
+    },
     /// Get a JSON schema for the app.yml format
     #[cfg(feature = "dev-tools")]
     Schema {
@@ -104,7 +109,10 @@ async fn main() {
     match args.command {
         SubCommand::Convert { citadel_root } => {
             cli::convert_dir(&citadel_root);
-        }
+        },
+        SubCommand::Download { citadel_root } => {
+            cli::download_apps(&citadel_root);
+        },
         #[cfg(feature = "dev-tools")]
         SubCommand::Schema { version } => match version.as_str() {
             "3" => {

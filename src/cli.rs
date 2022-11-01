@@ -18,6 +18,9 @@ use crate::{
 };
 
 mod tera;
+mod download;
+
+pub use download::download_apps;
 
 // A port map as used during creating the port map
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
