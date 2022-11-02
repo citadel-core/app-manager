@@ -12,7 +12,7 @@ use crate::{
         types::OutputMetadata,
         v4::{
             types::{PortMapElement, PortPriority},
-            utils::derive_entropy,
+            utils::{derive_entropy, get_main_container},
         },
     },
 };
@@ -228,6 +228,7 @@ pub fn convert_dir(citadel_root: &str) {
 
         //Part 2: IP & Port assignment
         {
+            let main_container = get_main_container(&app_yml).unwrap_or("main".to_string());
             for (service_name, service) in app_yml.services {
                 let ip_name = format!(
                     "APP_{}_{}_IP",
@@ -248,6 +249,15 @@ pub fn convert_dir(citadel_root: &str) {
                         &service_name,
                         main_port,
                         &service.port_priority.unwrap_or(PortPriority::Optional),
+                        false,
+                        app_yml.metadata.implements.clone(),
+                    );
+                } else if main_container == service_name {
+                    validate_port(
+                        app_id,
+                        &service_name,
+                        3000,
+                        &PortPriority::Optional,
                         false,
                         app_yml.metadata.implements.clone(),
                     );
