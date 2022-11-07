@@ -1,7 +1,7 @@
 use std::{
     collections::HashMap,
     io::{Error, Read, Write},
-    path::PathBuf,
+    path::Path,
 };
 
 use tera::Tera;
@@ -14,12 +14,12 @@ use crate::{
     utils::flatten,
 };
 
-fn convert_app_yml(jinja_file: &PathBuf, app_id: &str, services: &[String]) -> Result<(), Error> {
+fn convert_app_yml(jinja_file: &Path, app_id: &str, services: &[String]) -> Result<(), Error> {
     let mut context = tera::Context::new();
     context.insert("services", services);
     context.insert("app_name", app_id);
     let mut tmpl = String::new();
-    std::fs::File::open(jinja_file.clone())?.read_to_string(&mut tmpl)?;
+    std::fs::File::open(jinja_file)?.read_to_string(&mut tmpl)?;
     let tmpl_result = Tera::one_off(tmpl.as_str(), &context, false);
     if let Err(e) = tmpl_result {
         eprintln!("Error processing template: {}", e);
@@ -28,12 +28,12 @@ fn convert_app_yml(jinja_file: &PathBuf, app_id: &str, services: &[String]) -> R
             "Error parsing template",
         ));
     }
-    let mut writer = std::fs::File::create(jinja_file.with_extension(""))?;
+    let mut writer = std::fs::File::create(jinja_file.to_path_buf().with_extension(""))?;
     writer.write_all(tmpl_result.unwrap().as_bytes())
 }
 
 fn convert_config_template(
-    jinja_file: &PathBuf,
+    jinja_file: &Path,
     app_id: &str,
     app_version: &str,
     permissions: &[String],
@@ -47,7 +47,7 @@ fn convert_config_template(
     context.insert("app_name", app_id);
 
     for (key, val) in env_vars {
-        if is_allowed_by_permissions(app_id, key, &permissions) {
+        if is_allowed_by_permissions(app_id, key, permissions) {
             context.insert(key, &val);
         }
     }
@@ -73,17 +73,17 @@ fn convert_config_template(
             "Error parsing template",
         ));
     }
-    let mut writer = std::fs::File::create(jinja_file.with_extension(""))?;
+    let mut writer = std::fs::File::create(output_file)?;
     writer.write_all(tmpl_result.unwrap().as_bytes())
 }
 
 pub fn convert_app_jinja_files(
-    app_path: &PathBuf,
+    app_path: &Path,
     services: &[String],
     citadel_seed: &Option<String>,
     env_vars: &Option<HashMap<String, String>>,
 ) -> Result<(), Error> {
-    let app_yml_jinja = app_path.join("app.yml.jinja");
+    let app_yml_jinja = app_path.to_path_buf().join("app.yml.jinja");
     if app_yml_jinja.exists() {
         convert_app_yml(
             &app_yml_jinja,
@@ -124,9 +124,9 @@ pub fn convert_app_jinja_files(
                 app_path.file_name().unwrap().to_str().unwrap(),
                 &app_version,
                 &perms,
-                &services,
+                services,
                 env_vars,
-                &citadel_seed,
+                citadel_seed,
             )?;
         }
     }
