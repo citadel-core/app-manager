@@ -2,9 +2,9 @@
 name = "citadel-apps"
 description = "Handle Citadel app.yml files"
 license = "AGPL-3.0-or-later"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2021"
-repository = "https://github.com/runcitadel/app-cli"
+repository = "https://github.com/citadel-core/app-manager"
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
