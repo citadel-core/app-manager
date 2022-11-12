@@ -53,7 +53,7 @@ pub async fn check_updates(
                 return Err("No repo path found".to_string());
             }
             let (gitlab_server, repo) = repo_path.unwrap();
-            let client = Gitlab::builder(gitlab_server, token.unwrap_or_else(|| "".to_string()))
+            let client = Gitlab::builder(gitlab_server, token.unwrap_or_default())
                 .build_async()
                 .await;
             if let Err(client_err) = client {
