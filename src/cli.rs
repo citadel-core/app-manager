@@ -161,7 +161,7 @@ pub fn convert_dir(citadel_root: &str) {
                     new_port,
                     PortCacheMapEntry {
                         app: app.to_string(),
-                        internal_port: suggested_port,
+                        internal_port: if dynamic { new_port } else { suggested_port },
                         container: container.to_string(),
                         dynamic,
                         implements,
@@ -258,7 +258,7 @@ pub fn convert_dir(citadel_root: &str) {
                         &service_name,
                         3000,
                         &PortPriority::Optional,
-                        false,
+                        true,
                         app_yml.metadata.implements.clone(),
                     );
                 }
