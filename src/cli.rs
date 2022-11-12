@@ -228,7 +228,7 @@ pub fn convert_dir(citadel_root: &str) {
 
         //Part 2: IP & Port assignment
         {
-            let main_container = get_main_container(&app_yml).unwrap_or("main".to_string());
+            let main_container = get_main_container(&app_yml).unwrap_or_else(|_| "main".to_string());
             for (service_name, service) in app_yml.services {
                 let ip_name = format!(
                     "APP_{}_{}_IP",
