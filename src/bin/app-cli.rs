@@ -1,7 +1,7 @@
 use citadel_apps::cli;
 #[cfg(all(feature = "umbrel", feature = "dev-tools"))]
 use citadel_apps::composegenerator::umbrel::types::Metadata as UmbrelMetadata;
-use citadel_apps::composegenerator::v4::types::{AppYml};
+use citadel_apps::composegenerator::v4::types::AppYml;
 use citadel_apps::composegenerator::{convert_config, load_config};
 #[cfg(feature = "dev-tools")]
 use citadel_apps::{

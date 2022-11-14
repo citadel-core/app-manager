@@ -6,14 +6,13 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    composegenerator::{
-        convert_config, load_config_as_v4,
-        types::OutputMetadata,
-        v4::{
-            types::{PortMapElement, PortPriority},
-            utils::{derive_entropy, get_main_container},
-        },
+use crate::composegenerator::{
+    compose::types::ComposeSpecification,
+    convert_config, load_config_as_v4,
+    types::OutputMetadata,
+    v4::{
+        types::{PortMapElement, PortPriority},
+        utils::{derive_entropy, get_main_container},
     },
 };
 
@@ -184,7 +183,6 @@ pub fn convert_dir(citadel_root: &str) {
         }
     };
 
-
     if env_vars.is_empty() && citadel_seed.is_none() {
         eprintln!("Warning: Citadel does not seem to be set up yet!");
     }
@@ -207,15 +205,49 @@ pub fn convert_dir(citadel_root: &str) {
         let app_id = app.file_name();
         let app_id = app_id.to_str().unwrap();
 
-        if let Err(tera_error) = tera::convert_app_jinja_files(&app.path(), &services, &citadel_seed, &Some(env_vars.clone())) {
+        if let Err(tera_error) = tera::convert_app_jinja_files(
+            &app.path(),
+            &services,
+            &citadel_seed,
+            &Some(env_vars.clone()),
+        ) {
             eprintln!("Error converting app jinja files: {:?}", tera_error);
             continue;
         }
 
         let app_yml = app.path().join("app.yml");
         if !app_yml.exists() {
-            eprintln!("Warning: App {} does not have an app.yml file!", app_id);
-            continue;
+            #[cfg(feature = "umbrel")]
+            {
+                let umbrel_app_yml = app.path().join("umbrel-app.yml");
+                if umbrel_app_yml.exists() {
+                    let compose_yml = std::fs::File::open(app.path().join("docker-compose.yml"))
+                        .expect("Error opening docker-compose.yml!");
+                    let umbrel_app_yml =
+                        std::fs::File::open(umbrel_app_yml).expect("Error opening umbrel-app.yml!");
+                    let umbrel_app_yml: crate::composegenerator::umbrel::types::Metadata =
+                        serde_yaml::from_reader(umbrel_app_yml)
+                            .expect("Error parsing umbrel-app.yml!");
+                    let compose_yml_parsed: ComposeSpecification =
+                        serde_yaml::from_reader(compose_yml)
+                            .expect("Error parsing docker-compose.yml!");
+                    let result = crate::composegenerator::umbrel::convert::convert_compose(
+                        compose_yml_parsed,
+                        umbrel_app_yml,
+                    );
+                    let writer =
+                        std::fs::File::create(&app_yml).expect("Error creating output file");
+                    serde_yaml::to_writer(writer, &result).expect("Error saving file!");
+                } else {
+                    eprintln!("Warning: App {} does not have an app.yml file!", app_id);
+                    continue;
+                }
+            }
+            #[cfg(not(feature = "umbrel"))]
+            {
+                eprintln!("Warning: App {} does not have an app.yml file!", app_id);
+                continue;
+            }
         }
 
         let app_yml = std::fs::File::open(app_yml).expect("Failed to open app.yml file!");
@@ -228,7 +260,8 @@ pub fn convert_dir(citadel_root: &str) {
 
         //Part 2: IP & Port assignment
         {
-            let main_container = get_main_container(&app_yml).unwrap_or_else(|_| "main".to_string());
+            let main_container =
+                get_main_container(&app_yml).unwrap_or_else(|_| "main".to_string());
             for (service_name, service) in app_yml.services {
                 let ip_name = format!(
                     "APP_{}_{}_IP",
