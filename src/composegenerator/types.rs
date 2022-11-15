@@ -1,7 +1,7 @@
 #[cfg(feature = "schema")]
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, BTreeMap};
 
 use crate::composegenerator::output::types::ComposeSpecification;
 
@@ -66,6 +66,8 @@ pub struct OutputMetadata {
     pub missing_dependencies: Option<Vec<Permissions>>,
     pub port: u16,
     pub internal_port: u16,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub release_notes: Option<BTreeMap<String, String>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]

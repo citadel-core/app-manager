@@ -97,8 +97,8 @@ async fn update_app_yml(path: &Path, include_prerelease: bool) {
         }
     }
 }
-#[tokio::main]
-async fn main() {
+
+fn main() {
     env_logger::init();
     let args: Cli = Cli::parse();
     match args.command {
@@ -162,60 +162,64 @@ async fn main() {
             app,
             token,
             include_prerelease,
-        } => {
-            if let Some(gh_token) = token {
-                octocrab::initialise(octocrab::OctocrabBuilder::new().personal_token(gh_token))
-                    .expect("Failed to initialise octocrab");
-            }
-            let path = std::path::Path::new(&app);
-            if path.is_file() {
-                update_app_yml(path, include_prerelease).await;
-            } else if path.is_dir() {
-                let app_yml_path = path.join("app.yml");
-                if app_yml_path.is_file() {
-                    update_app_yml(&app_yml_path, include_prerelease).await;
-                } else {
-                    let subdirs = std::fs::read_dir(path).expect("Failed to read directory");
-                    for subdir in subdirs {
-                        let subdir = subdir.unwrap_or_else(|_| {
-                            panic!("Failed to read subdir/file in {}", path.display())
-                        });
-                        let file_type = subdir.file_type().unwrap_or_else(|_| {
-                            panic!(
-                                "Failed to get filetype of {}/{}",
-                                path.display(),
-                                subdir.file_name().to_string_lossy()
-                            )
-                        });
-                        if file_type.is_file() {
-                            continue;
-                        } else if file_type.is_symlink() {
-                            eprintln!(
-                                "Symlinks like {}/{} are not supported yet!",
-                                path.display(),
-                                subdir.file_name().to_string_lossy()
-                            );
-                        } else if file_type.is_dir() {
-                            let sub_app_yml = subdir.path().join("app.yml");
-                            if sub_app_yml.is_file() {
-                                update_app_yml(&sub_app_yml, include_prerelease).await;
-                            } else {
+        } => tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(async {
+                if let Some(gh_token) = token {
+                    octocrab::initialise(octocrab::OctocrabBuilder::new().personal_token(gh_token))
+                        .expect("Failed to initialise octocrab");
+                }
+                let path = std::path::Path::new(&app);
+                if path.is_file() {
+                    update_app_yml(path, include_prerelease).await;
+                } else if path.is_dir() {
+                    let app_yml_path = path.join("app.yml");
+                    if app_yml_path.is_file() {
+                        update_app_yml(&app_yml_path, include_prerelease).await;
+                    } else {
+                        let subdirs = std::fs::read_dir(path).expect("Failed to read directory");
+                        for subdir in subdirs {
+                            let subdir = subdir.unwrap_or_else(|_| {
+                                panic!("Failed to read subdir/file in {}", path.display())
+                            });
+                            let file_type = subdir.file_type().unwrap_or_else(|_| {
+                                panic!(
+                                    "Failed to get filetype of {}/{}",
+                                    path.display(),
+                                    subdir.file_name().to_string_lossy()
+                                )
+                            });
+                            if file_type.is_file() {
+                                continue;
+                            } else if file_type.is_symlink() {
                                 eprintln!(
-                                    "{}/{}/app.yml does not exist or is not a file!",
+                                    "Symlinks like {}/{} are not supported yet!",
                                     path.display(),
                                     subdir.file_name().to_string_lossy()
                                 );
-                                continue;
+                            } else if file_type.is_dir() {
+                                let sub_app_yml = subdir.path().join("app.yml");
+                                if sub_app_yml.is_file() {
+                                    update_app_yml(&sub_app_yml, include_prerelease).await;
+                                } else {
+                                    eprintln!(
+                                        "{}/{}/app.yml does not exist or is not a file!",
+                                        path.display(),
+                                        subdir.file_name().to_string_lossy()
+                                    );
+                                    continue;
+                                }
+                            } else {
+                                unreachable!();
                             }
-                        } else {
-                            unreachable!();
                         }
                     }
+                } else {
+                    panic!();
                 }
-            } else {
-                panic!();
-            }
-        }
+            }),
         #[cfg(feature = "dev-tools")]
         SubCommand::V3ToV4 { app } => {
             let app_yml = std::fs::File::open(app.clone()).expect("Error opening app definition!");

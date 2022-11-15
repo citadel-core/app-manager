@@ -611,6 +611,7 @@ pub fn convert_config(
         missing_dependencies: None,
         port: main_port_host.unwrap_or(main_port),
         internal_port: main_port,
+        release_notes: app.metadata.release_notes,
     };
     if !missing_deps.is_empty() {
         metadata.missing_dependencies = Some(missing_deps);

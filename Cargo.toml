@@ -16,7 +16,7 @@ hex = "0.4.3"
 hmac-sha256 = "1.1.5"
 # Optional dependencies
 schemars = { version = "0.8", optional = true }
-tokio  = { version = "1.21.2", optional = true, features = ["full"] }
+tokio  = { version = "1.21.2", optional = true, features = ["net", "rt"] }
 bollard = { version = "0.13.0", optional = true }
 futures-util = { version = "0.3.25", optional = true }
 octocrab = { version = "0.17.0", optional = true }
@@ -39,9 +39,9 @@ name = "app-cli"
 required-features = ["cli"]
 
 [features]
-cli = ["dep:clap", "dep:env_logger", "dep:tokio", "dep:dotenv", "dep:tera"]
+cli = ["dep:clap", "dep:env_logger", "dep:dotenv", "dep:tera"]
 umbrel = []
-dev-tools = ["umbrel", "schema", "docker", "dep:octocrab", "dep:semver", "dep:gitlab", "dep:url"]
+dev-tools = ["umbrel", "schema", "docker", "dep:octocrab", "dep:semver", "dep:gitlab", "dep:url", "dep:tokio"]
 schema = ["dep:schemars"]
 docker = ["dep:bollard", "dep:futures-util"]
 

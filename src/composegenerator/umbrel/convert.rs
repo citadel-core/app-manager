@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use crate::composegenerator::compose::types::{Command, EnvVars, StringOrIntOrBool};
 use crate::composegenerator::types::Permissions;
@@ -23,7 +23,7 @@ pub fn convert_metadata(metadata: Metadata) -> CitadelMetadata {
         .collect();
     CitadelMetadata {
         name: metadata.name,
-        version: metadata.version,
+        version: metadata.version.clone(),
         repo: map! {
             "Public" => metadata.repo
         },
@@ -46,6 +46,14 @@ pub fn convert_metadata(metadata: Metadata) -> CitadelMetadata {
         description: metadata.description,
         implements: None,
         version_control: None,
+        release_notes: if let Some(release_notes) = metadata.release_notes {
+            Some(BTreeMap::from([(
+                metadata.version,
+                release_notes,
+            )]))
+        } else {
+            None
+        },
     }
 }
 

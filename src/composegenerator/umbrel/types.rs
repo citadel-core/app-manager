@@ -45,4 +45,5 @@ pub struct Metadata {
     pub deterministic_password: bool,
     /// A description of the app
     pub description: String,
+    pub release_notes: Option<String>,
 }

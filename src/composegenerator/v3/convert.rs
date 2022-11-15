@@ -29,6 +29,7 @@ pub fn v3_to_v4(app: AppYmlV3, installed_services: &Option<&Vec<String>>) -> typ
         description: app.metadata.description,
         implements: None,
         version_control: None,
+        release_notes: None,
     };
     let mut services = HashMap::<String, types_v4::Container>::with_capacity(app.containers.len());
     let deps = flatten(app.metadata.dependencies.unwrap_or_default());

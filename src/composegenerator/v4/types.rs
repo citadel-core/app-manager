@@ -1,7 +1,7 @@
 #[cfg(feature = "schema")]
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, BTreeMap};
 
 use crate::composegenerator::compose::types::{Command, StringOrIntOrBool};
 use crate::composegenerator::types::Permissions;
@@ -134,6 +134,8 @@ pub struct InputMetadata {
     pub implements: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub version_control: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub release_notes: Option<BTreeMap<String, String>>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug, PartialEq, Eq)]
