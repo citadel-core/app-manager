@@ -1,4 +1,4 @@
-FROM amd64/rust:1.64.0-bullseye as build-env
+FROM amd64/rust:1.65.0-bullseye as build-env
 
 RUN apt update && apt upgrade -y
 RUN apt install -y g++-aarch64-linux-gnu libc6-dev-arm64-cross
