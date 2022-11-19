@@ -105,11 +105,11 @@ pub fn v3_to_v4(app: AppYmlV3, installed_services: &Option<&Vec<String>>) -> typ
             }
             let mut split = value.split(':');
             let Some(key) = split.next() else {
-                eprintln!("Encountered invalid mount: {}", value);
+                tracing::error!("Encountered invalid mount: {}", value);
                 continue;
             };
             let Some(value) = split.next() else {
-                eprintln!("Encountered invalid env var: {}", value);
+                tracing::error!("Encountered invalid env var: {}", value);
                 continue;
             };
             mounts

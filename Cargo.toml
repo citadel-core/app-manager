@@ -15,6 +15,7 @@ lazy_static = "1.4"
 hex = "0.4.3"
 hmac-sha256 = "1.1.5"
 anyhow = { version = "1.0.66", features = ["backtrace"] }
+tracing = "0.1.37"
 # Optional dependencies
 schemars = { version = "0.8", optional = true }
 tokio  = { version = "1.21.2", optional = true, features = ["net", "rt"] }
@@ -25,13 +26,13 @@ semver = { version = "1.0.14", optional = true }
 gitlab = { version = "0.1505.0", optional = true }
 url = { version = "2.3.0", optional = true }
 # Only used by the CLI
-env_logger = { version = "0.9", optional = true }
 clap = { version = "3.2", features = ["derive"], optional = true }
 tera = { version = "1", default-features = false, optional = true }
 dotenv = { version = "0.15.0", optional = true }
 tempdir = { version = "0.3.7", optional = true }
 git2 = { version = "0.15.0", optional = true }
 fs_extra = { version = "1.2.0", optional = true }
+tracing-subscriber = { version = "0.3.16", optional = true }
 
 [profile.release]
 strip = true
@@ -43,7 +44,7 @@ name = "app-cli"
 required-features = ["cli"]
 
 [features]
-cli = ["dep:clap", "dep:env_logger", "dep:dotenv", "dep:tera", "dep:tempdir", "dep:git2", "dep:semver", "dep:fs_extra"]
+cli = ["dep:clap", "dep:tracing-subscriber", "dep:dotenv", "dep:tera", "dep:tempdir", "dep:git2", "dep:semver", "dep:fs_extra"]
 umbrel = []
 dev-tools = ["umbrel", "schema", "docker", "dep:octocrab", "dep:semver", "dep:gitlab", "dep:url", "dep:tokio"]
 schema = ["dep:schemars"]

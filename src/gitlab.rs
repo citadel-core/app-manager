@@ -26,7 +26,7 @@ pub async fn check_updates(
         let tag = tag.trim_start_matches('v');
         let version = Version::parse(tag);
         let Ok(version) = version else {
-            eprintln!("Error while parsing tag {}: {}", tag, version.unwrap_err());
+            tracing::error!("Error while parsing tag {}: {}", tag, version.unwrap_err());
             continue;
         };
         if (include_pre || version.pre.is_empty()) && &version > current_version {

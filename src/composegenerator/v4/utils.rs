@@ -70,7 +70,7 @@ pub fn get_main_container(spec: &super::types::AppYml) -> Result<String> {
             break;
         } else if service_name.starts_with("main") {
             if main_service_name.is_some() {
-                eprintln!(
+                tracing::error!(
                     "Container {} and {} could both be main container",
                     service_name,
                     main_service_name.unwrap()

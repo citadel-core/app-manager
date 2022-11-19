@@ -114,7 +114,7 @@ async fn update_app_yml(path: &Path, include_prerelease: bool) {
 }
 
 fn main() {
-    env_logger::init();
+    tracing_subscriber::fmt::init();
     let args: Cli = Cli::parse();
     match args.command {
         SubCommand::Convert { citadel_root } => {

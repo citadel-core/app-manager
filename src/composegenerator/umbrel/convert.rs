@@ -137,11 +137,11 @@ pub fn convert_compose(
                     for val in list {
                         let mut split = val.split('=');
                         let Some(key) = split.next() else {
-                            eprintln!("Encountered invalid env var: {}", val);
+                            tracing::error!("Encountered invalid env var: {}", val);
                             continue;
                         };
                         let Some(value) = split.next() else {
-                            eprintln!("Encountered invalid env var: {}", val);
+                            tracing::error!("Encountered invalid env var: {}", val);
                             continue;
                         };
                         map.insert(key.to_string(), StringOrIntOrBool::String(value.to_string()));
