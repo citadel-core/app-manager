@@ -72,6 +72,10 @@ enum SubCommand {
         /// The Citadel root directory
         citadel_root: String,
     },
+    CheckUpdates {
+        /// The Citadel root directory
+        citadel_root: String,
+    },
 }
 
 /// Manage apps on Citadel
@@ -241,7 +245,9 @@ fn main() {
         },
         SubCommand::DownloadApps { citadel_root } => {
             cli::repos::download_apps(&citadel_root).expect("Failed to download apps");
-        }
-
+        },
+        SubCommand::CheckUpdates { citadel_root } => {
+            cli::repos::list_updates(&citadel_root).expect("Failed to check for updates");
+        },
     }
 }

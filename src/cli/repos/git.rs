@@ -4,8 +4,9 @@ use std::path::{Path, PathBuf};
 
 
 use git2::build::{CheckoutBuilder, RepoBuilder};
-use git2::{FetchOptions, Progress, RemoteCallbacks};
-
+use git2::{FetchOptions, Progress, RemoteCallbacks, Repository};
+use std::{collections::HashMap};
+use anyhow::Result;
 
 struct State {
     progress: Option<Progress<'static>>,
@@ -96,3 +97,40 @@ pub fn clone(repo: &str, branch: &str, target: &Path) -> Result<(), git2::Error>
     Ok(())
 }
 
+/// Gets the currently checked out commit from a repo path
+pub fn get_commit(repo_path: &Path) -> Result<String, git2::Error> {
+    let repo = git2::Repository::open(repo_path)?;
+    let head = repo.head()?;
+    let commit = head.peel_to_commit()?;
+    Ok(commit.id().to_string())
+}
+
+pub fn get_latest_commit_for_apps(repo_path: &Path, app_subdir: &str, apps: &[String]) -> Result<HashMap<String, String>> {
+        let mut latest_commits: HashMap<String, String> = HashMap::new();
+        let repo = Repository::open(repo_path)?;
+        let mut revwalk = repo.revwalk()?;
+        revwalk.set_sorting(git2::Sort::TIME)?;
+        revwalk.push_head()?;
+        for commit_id in revwalk {
+            let commit_id = commit_id?;
+            let commit = repo.find_commit(commit_id)?;
+            // Ignore merge commits (2+ parents) because that's what 'git whatchanged' does.
+            // Ignore commit with 0 parents (initial commit) because there's nothing to diff against
+            if commit.parent_count() == 1 {
+                let prev_commit = commit.parent(0)?;
+                let tree = commit.tree()?;
+                let prev_tree = prev_commit.tree()?;
+                let diff= repo.diff_tree_to_tree(Some(&prev_tree), Some(&tree), None)?;
+                for delta in diff.deltas() {
+                    let file_path = delta.new_file().path().unwrap();
+                    if file_path.starts_with(app_subdir) {
+                        let app_name = file_path.components().nth(1).unwrap().as_os_str().to_str().unwrap();
+                        if apps.contains(&app_name.to_string()) && !latest_commits.contains_key(app_name) {
+                            latest_commits.insert(app_name.to_string(), commit.id().to_string());
+                        }
+                    }
+                }
+            }
+        }
+        Ok(latest_commits)
+}

@@ -22,11 +22,68 @@ struct AppStoreV1 {
     id: String,
     name: String,
     tagline: String,
+    icon: String,
     developers: String,
     license: String,
 
     content: HashMap<String, String>,
     apps: Option<Vec<String>>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct AppStoreInfo {
+    id: String,
+    name: String,
+    tagline: String,
+    icon: String,
+    developers: String,
+    license: String,
+    apps: HashMap<String, String>,
+    commit: String,
+    repo: String,
+    branch: String,
+    subdir: String,
+}
+
+fn get_subdir(app_store: &AppStoreV1) -> Option<String> {
+    let mut subdir = None;
+    if app_store.content.contains_key(env!("CARGO_PKG_VERSION")) {
+        subdir = Some(
+            app_store
+                .content
+                .get(env!("CARGO_PKG_VERSION"))
+                .unwrap()
+                .clone(),
+        );
+    } else if app_store
+        .content
+        .contains_key(&("v".to_owned() + env!("CARGO_PKG_VERSION")))
+    {
+        subdir = Some(
+            app_store
+                .content
+                .get(&("v".to_owned() + env!("CARGO_PKG_VERSION")))
+                .unwrap()
+                .clone(),
+        );
+    } else {
+        let current_version = Version::parse(env!("CARGO_PKG_VERSION")).unwrap();
+        let minimum_app_manager = Version::parse(MINIMUM_COMPATIBLE_APP_MANAGER).unwrap();
+        // The semver of the latest found verion so we can compare it to find a later one
+        let mut found_version: Option<Version> = None;
+        for (key, value) in app_store.content.iter() {
+            let key = key.strip_prefix('v').unwrap_or(key);
+            let key = Version::parse(key).unwrap();
+            if key >= minimum_app_manager
+                && key <= current_version
+                && (found_version.is_none() || key > found_version.as_ref().unwrap().clone())
+            {
+                found_version = Some(key);
+                subdir = Some(value.clone());
+            }
+        }
+    }
+    subdir
 }
 
 pub fn download_apps(citadel_root: &str) -> Result<()> {
@@ -73,54 +130,33 @@ pub fn download_apps(citadel_root: &str) -> Result<()> {
                     eprintln!("Failed to load app-store.yml in {}", source.repo);
                     continue;
                 };
-                let mut out_app_store = app_store.clone();
-                out_app_store.apps = Some(Vec::new());
-                println!(env!("CARGO_PKG_VERSION"));
-                let mut subdir = None;
-                if app_store.content.contains_key(env!("CARGO_PKG_VERSION")) {
-                    subdir = Some(app_store.content.get(env!("CARGO_PKG_VERSION")).unwrap());
-                } else if app_store
-                    .content
-                    .contains_key(&("v".to_owned() + env!("CARGO_PKG_VERSION")))
-                {
-                    subdir = Some(
-                        app_store
-                            .content
-                            .get(&("v".to_owned() + env!("CARGO_PKG_VERSION")))
-                            .unwrap(),
-                    );
-                } else {
-                    let current_version = Version::parse(env!("CARGO_PKG_VERSION")).unwrap();
-                    let minimum_app_manager =
-                        Version::parse(MINIMUM_COMPATIBLE_APP_MANAGER).unwrap();
-                    // The semver of the latest found verion so we can compare it to find a later one
-                    let mut found_version: Option<Version> = None;
-                    for (key, value) in app_store.content.iter() {
-                            let key = key.strip_prefix('v').unwrap_or(key);
-                            let key = Version::parse(key).unwrap();
-                            if key >= minimum_app_manager
-                                && key <= current_version
-                                && (found_version.is_none()
-                                    || key > found_version.as_ref().unwrap().clone())
-                            {
-                                found_version = Some(key);
-                                subdir = Some(value);
-                            }
-                    }
-                }
-                let Some(subdir) = subdir else {
+                let Some(subdir) = get_subdir(&app_store) else {
                         eprintln!("No compatible version found for {}", source.repo);
                         continue;
                     };
-                let subdir = Path::new(subdir);
+                let mut out_app_store = AppStoreInfo {
+                    id: app_store.id,
+                    name: app_store.name,
+                    tagline: app_store.tagline,
+                    icon: app_store.icon,
+                    developers: app_store.developers,
+                    license: app_store.license,
+                    apps: HashMap::new(),
+                    commit: git::get_commit(tmp_dir.path())?,
+                    repo: source.repo,
+                    branch: source.branch,
+                    subdir: subdir.clone(),
+                };
+                let subdir_path = Path::new(&subdir);
                 // Copy all dirs from the subdir to the apps dir
                 // Overwrite any existing files
                 // Skip apps that are already in installed_apps
-                for entry in std::fs::read_dir(tmp_dir.path().join(subdir))? {
+                let mut store_apps = vec![];
+                for entry in std::fs::read_dir(tmp_dir.path().join(subdir_path))? {
                     let entry = entry?;
                     let app_id = entry.file_name().to_str().unwrap().to_string();
                     if installed_apps.contains(&app_id) {
-                        eprintln!("App store {} tries to install app {} which is already installed by another store.", source.repo, app_id);
+                        eprintln!("App store {} tries to install app {} which is already installed by another store.", out_app_store.id, app_id);
                         continue;
                     }
                     fs_extra::dir::copy(
@@ -136,8 +172,10 @@ pub fn download_apps(citadel_root: &str) -> Result<()> {
                         },
                     )?;
                     installed_apps.push(app_id.clone());
-                    out_app_store.apps.as_mut().unwrap().push(app_id);
+                    store_apps.push(app_id);
                 }
+                out_app_store.apps =
+                    git::get_latest_commit_for_apps(tmp_dir.path(), &subdir, &installed_apps)?;
                 stores.push(out_app_store);
             }
             _ => {
@@ -151,6 +189,76 @@ pub fn download_apps(citadel_root: &str) -> Result<()> {
     let stores_yml = citadel_root.join("apps").join("stores.yml");
     let mut file = File::create(&stores_yml)?;
     serde_yaml::to_writer(&mut file, &stores)?;
+
+    Ok(())
+}
+
+pub fn list_updates(citadel_root: &str) -> Result<()> {
+    //let mut updatable_apps = vec![];
+
+    let citadel_root = Path::new(citadel_root);
+    let stores_yml = citadel_root.join("apps").join("stores.yml");
+    let stores_yml = std::fs::File::open(stores_yml)?;
+    let stores = serde_yaml::from_reader::<File, Vec<AppStoreInfo>>(stores_yml)?;
+
+    for store in stores {
+        let tmp_dir = TempDir::new("citadel")?;
+        git::clone(&store.repo, &store.branch, tmp_dir.path())?;
+        let commit = git::get_commit(tmp_dir.path())?;
+        if commit != store.commit {
+            println!("Store {} has an update.", store.id);
+            let app_store_yml = tmp_dir.path().join("app-store.yml");
+            let app_store_yml = std::fs::File::open(app_store_yml);
+            let Ok(app_store_yml) = app_store_yml else {
+                eprintln!("No app-store.yml found in {}", store.repo);
+                continue;
+            };
+            let app_store = serde_yaml::from_reader::<File, serde_yaml::Value>(app_store_yml);
+            let Ok(app_store) = app_store else {
+                eprintln!("Failed to load app-store.yml in {}", store.repo);
+                continue;
+            };
+            let app_store_version = app_store.get("store_version");
+            if app_store_version.is_none() || !app_store_version.unwrap().is_u64() {
+                eprintln!("App store version not defined.");
+                continue;
+            }
+            let app_store_version = app_store_version.unwrap().as_u64().unwrap();
+            match app_store_version {
+                1 => {
+                    let app_store = serde_yaml::from_value::<AppStoreV1>(app_store);
+                    let Ok(app_store) = app_store else {
+                        eprintln!("Failed to load app-store.yml in {}", store.repo);
+                        continue;
+                    };
+                    let Some(subdir) = get_subdir(&app_store) else {
+                            eprintln!("No compatible version found for {}", store.repo);
+                            continue;
+                        };
+                    let mut all_store_updatable_apps: Vec<String>;
+                    if subdir != store.subdir {
+                        all_store_updatable_apps = store.apps.clone().into_keys().collect();
+                    } else {
+                        let latest_commits = git::get_latest_commit_for_apps(tmp_dir.path(), &subdir, &store.apps.clone().into_keys().collect::<Vec<String>>());
+                        let Ok(mut latest_commits) = latest_commits else {
+                            eprintln!("Failed to get latest commits for apps in {}", store.repo);
+                            continue;
+                        };
+                        latest_commits.retain(|app_id, commit| store.apps.contains_key(app_id) && store.apps.get(app_id).unwrap() != commit);
+                        all_store_updatable_apps = latest_commits.into_keys().collect();
+
+                    }
+                    let subdir_path = Path::new(&subdir);
+                    all_store_updatable_apps.retain(|v| subdir_path.join(v).exists());
+                    println!("{} apps can be updated: {:#?}", all_store_updatable_apps.len(), all_store_updatable_apps);
+                }
+                _ => {
+                    eprintln!("Unknown app store version: {}", app_store_version);
+                    continue;
+                }
+            }
+        }
+    }
 
     Ok(())
 }
