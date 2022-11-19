@@ -1,11 +1,12 @@
-use std::{collections::HashMap, fs::File, path::Path};
+use std::{collections::{HashMap, BTreeMap}, fs::File, path::Path};
 
 use anyhow::Result;
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use tempdir::TempDir;
+use super::{preprocessing::preprocess_apps, UserJson};
 
-use crate::constants::MINIMUM_COMPATIBLE_APP_MANAGER;
+use crate::{constants::MINIMUM_COMPATIBLE_APP_MANAGER, composegenerator::load_config_as_v4};
 
 mod git;
 
@@ -43,6 +44,13 @@ struct AppStoreInfo {
     repo: String,
     branch: String,
     subdir: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct AppUpdateInfo {
+    id: String,
+    new_version: String,
+    release_notes: BTreeMap<String, String>,
 }
 
 fn get_subdir(app_store: &AppStoreV1) -> Option<String> {
@@ -194,9 +202,20 @@ pub fn download_apps(citadel_root: &str) -> Result<()> {
 }
 
 pub fn list_updates(citadel_root: &str) -> Result<()> {
-    //let mut updatable_apps = vec![];
-
     let citadel_root = Path::new(citadel_root);
+
+    let mut services = Vec::<String>::new();
+    let user_json = std::fs::File::open(citadel_root.join("db").join("user.json"));
+    if let Ok(user_json) = user_json {
+        let user_json = serde_json::from_reader::<_, UserJson>(user_json);
+        if let Ok(user_json) = user_json {
+            services = user_json.installed_apps;
+        }
+    }
+    services.append(&mut vec!["bitcoind".to_string(), "lnd".to_string()]);
+
+    let mut updatable_apps = vec![];
+
     let stores_yml = citadel_root.join("apps").join("stores.yml");
     let stores_yml = std::fs::File::open(stores_yml)?;
     let stores = serde_yaml::from_reader::<File, Vec<AppStoreInfo>>(stores_yml)?;
@@ -248,9 +267,28 @@ pub fn list_updates(citadel_root: &str) -> Result<()> {
                         all_store_updatable_apps = latest_commits.into_keys().collect();
 
                     }
-                    let subdir_path = Path::new(&subdir);
+                    let subdir_path = tmp_dir.path().join(subdir);
                     all_store_updatable_apps.retain(|v| subdir_path.join(v).exists());
-                    println!("{} apps can be updated: {:#?}", all_store_updatable_apps.len(), all_store_updatable_apps);
+                    preprocess_apps(citadel_root, &subdir_path);
+                    for app_id in all_store_updatable_apps {
+                        let app_dir = subdir_path.join(&app_id);
+                        let app_yml = app_dir.join("app.yml");
+                        let app_yml = std::fs::File::open(app_yml);
+                        let Ok(app_yml) = app_yml else {
+                            eprintln!("No app.yml found for app {}", app_id);
+                            continue;
+                        };
+                        let app_config = load_config_as_v4(app_yml, &Some(&services));
+                        let Ok(app_config) = app_config else {
+                            eprintln!("Failed to load app.yml for app {}", app_id);
+                            continue;
+                        };
+                        updatable_apps.push(AppUpdateInfo {
+                            id: app_id,
+                            new_version: app_config.metadata.version,
+                            release_notes: app_config.metadata.release_notes.unwrap_or_else(|| BTreeMap::new()),
+                        })
+                    }
                 }
                 _ => {
                     eprintln!("Unknown app store version: {}", app_store_version);
@@ -259,6 +297,10 @@ pub fn list_updates(citadel_root: &str) -> Result<()> {
             }
         }
     }
+
+    let updates_yml = citadel_root.join("updates.yml");
+    let mut file = File::create(&updates_yml)?;
+    serde_yaml::to_writer(&mut file, &updatable_apps)?;
 
     Ok(())
 }
