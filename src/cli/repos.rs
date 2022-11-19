@@ -304,3 +304,71 @@ pub fn list_updates(citadel_root: &str) -> Result<()> {
 
     Ok(())
 }
+
+pub fn download_app(citadel_root: &str, app: &str) -> Result<()> {
+    let citadel_root = Path::new(citadel_root);
+    let stores_yml = citadel_root.join("apps").join("stores.yml");
+    let stores_yml = std::fs::File::open(stores_yml)?;
+    let stores = serde_yaml::from_reader::<File, Vec<AppStoreInfo>>(stores_yml)?;
+    let app_src = stores.iter().find(|store| store.apps.contains_key(app));
+    let app_src = app_src.expect("App not found in any store");
+    let tmp_dir = TempDir::new("citadel")?;
+    git::clone(&app_src.repo, &app_src.branch, tmp_dir.path())?;
+    let app_store_yml = tmp_dir.path().join("app-store.yml");
+    let app_store_yml = std::fs::File::open(app_store_yml);
+    let Ok(app_store_yml) = app_store_yml else {
+        eprintln!("No app-store.yml found in {}", app_src.repo);
+        return Ok(());
+    };
+    let app_store = serde_yaml::from_reader::<File, serde_yaml::Value>(app_store_yml);
+    let Ok(app_store) = app_store else {
+        eprintln!("Failed to load app-store.yml in {}", app_src.repo);
+        return Ok(());
+    };
+    let app_store_version = app_store.get("store_version");
+    if app_store_version.is_none() || !app_store_version.unwrap().is_u64() {
+        eprintln!("App store version not defined.");
+        return Ok(());
+    }
+    let app_store_version = app_store_version.unwrap().as_u64().unwrap();
+    match app_store_version {
+        1 => {
+            let app_store = serde_yaml::from_value::<AppStoreV1>(app_store);
+            let Ok(app_store) = app_store else {
+                eprintln!("Failed to load app-store.yml in {}", app_src.repo);
+                return Ok(());
+            };
+            let Some(subdir) = get_subdir(&app_store) else {
+                    eprintln!("No compatible version found for {}", app_src.repo);
+                    return Ok(());
+                };
+            // Check if app exists in store
+            let app_dir = tmp_dir.path().join(subdir).join(app);
+            if !app_dir.exists() {
+                eprintln!("App {} not present in {} anymore", app, app_src.repo);
+                return Ok(());
+            }
+
+            // Overwrite app
+            let citadel_app_dir = citadel_root.join("apps").join(app);
+            if citadel_app_dir.exists() {
+                std::fs::remove_dir_all(&citadel_app_dir)?;
+            }
+            std::fs::create_dir_all(&citadel_app_dir)?;
+
+            fs_extra::dir::copy(&app_dir, &citadel_root.join("apps"), &fs_extra::dir::CopyOptions {
+                overwrite: true,
+                ..Default::default()
+            })?;
+        },
+        _ => {
+            eprintln!("Unknown app store version: {}", app_store_version);
+            return Ok(());
+        }
+    }
+
+
+
+    Ok(())
+
+}
