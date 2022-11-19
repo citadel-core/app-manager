@@ -17,6 +17,7 @@ use crate::composegenerator::{
 };
 
 mod tera;
+pub mod repos;
 
 // A port map as used during creating the port map
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]

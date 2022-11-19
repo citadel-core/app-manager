@@ -1,4 +1,6 @@
-FROM rust:1.65.0-slim-bullseye as build-env
+FROM rust:1.65.0-bullseye as build-env
+RUN apt update && apt install -y libssl-dev pkg-config build-essential cmake
+
 WORKDIR /app
 COPY . /app
 RUN cargo build --bin app-cli --release --features=cli,umbrel

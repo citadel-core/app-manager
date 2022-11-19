@@ -1,0 +1,2 @@
+pub const MINIMUM_COMPATIBLE_APP_MANAGER: &str = "";
+pub const MINIMUM_COMPATIBLE_APP_YML: u8 = 3;

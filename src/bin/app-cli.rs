@@ -68,6 +68,10 @@ enum SubCommand {
         /// The app file to run this on
         app: String,
     },
+    DownloadApps {
+        /// The Citadel root directory
+        citadel_root: String,
+    },
 }
 
 /// Manage apps on Citadel
@@ -234,6 +238,10 @@ fn main() {
                         .expect("Error saving app definition!");
                 }
             }
+        },
+        SubCommand::DownloadApps { citadel_root } => {
+            cli::repos::download_apps(&citadel_root).expect("Failed to download apps");
         }
+
     }
 }
