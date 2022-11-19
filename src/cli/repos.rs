@@ -96,8 +96,7 @@ pub fn download_apps(citadel_root: &str) -> Result<()> {
                     // The semver of the latest found verion so we can compare it to find a later one
                     let mut found_version: Option<Version> = None;
                     for (key, value) in app_store.content.iter() {
-                        if key.starts_with("v") {
-                            let key = &key[1..];
+                            let key = key.strip_prefix('v').unwrap_or(key);
                             let key = Version::parse(key).unwrap();
                             if key >= minimum_app_manager
                                 && key <= current_version
@@ -107,7 +106,6 @@ pub fn download_apps(citadel_root: &str) -> Result<()> {
                                 found_version = Some(key);
                                 subdir = Some(value);
                             }
-                        }
                     }
                 }
                 let Some(subdir) = subdir else {
