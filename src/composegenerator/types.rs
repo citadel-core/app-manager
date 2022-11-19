@@ -38,7 +38,7 @@ pub struct OutputMetadata {
     /// Permissions the app requires
     pub permissions: Vec<Permissions>,
     /// App repository name -> repo URL
-    pub repo: HashMap<String, String>,
+    pub repo: BTreeMap<String, String>,
     /// A support link for the app
     pub support: String,
     /// A list of promo images for the apps

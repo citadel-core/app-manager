@@ -18,27 +18,23 @@ use crate::{
 use std::collections::{BTreeMap, HashMap};
 
 use crate::composegenerator::types::ResultYml;
+use anyhow::{bail, Result};
 
 fn get_main_port(
     containers: &HashMap<String, types::Container>,
     main_container: &str,
     port_map: &Option<HashMap<String, Vec<PortMapElement>>>,
-) -> Result<u16, String> {
+) -> Result<u16> {
     let mut result: u16 = 0;
     for service_name in containers.keys() {
         let original_definition = containers.get(service_name).unwrap();
         if service_name != main_container && original_definition.port.is_some() {
-            return Err(
-                "port: is not supported for containers other than the main container".to_string(),
-            );
+            bail!("port: is not supported for containers other than the main container");
         }
 
         if let Some(internal_port) = original_definition.port {
             if service_name != main_container {
-                return Err(
-                    "port: is not supported for containers other than the main container"
-                        .to_string(),
-                );
+                bail!("port: is not supported for containers other than the main container");
             }
             let public_port: Option<&PortMapElement>;
             let fake_port = PortMapElement {
@@ -48,10 +44,10 @@ fn get_main_port(
             };
             if let Some(real_port_map) = port_map {
                 if real_port_map.get(service_name).is_none() {
-                    return Err(format!(
+                    bail!(
                         "Container {} not found or invalid in port map",
                         service_name
-                    ));
+                    );
                 }
                 let ports = real_port_map.get(service_name).unwrap();
                 public_port = get_host_port(ports, internal_port);
@@ -62,7 +58,7 @@ fn get_main_port(
                 result = internal_port;
                 break;
             } else {
-                return Err("Main container port not found in port map".to_string());
+                bail!("Main container port not found in port map".to_string());
             }
         } else if service_name == main_container {
             let empty_vec = Vec::<PortMapElement>::with_capacity(0);
@@ -78,7 +74,7 @@ fn get_main_port(
             } else if port_map.is_none() {
                 result = 3000;
             } else {
-                return Err("A port is required for the main container".to_string());
+                bail!("A port is required for the main container".to_string());
             }
         }
     }
@@ -91,22 +87,17 @@ fn configure_ports(
     main_container: &str,
     output: &mut ComposeSpecification,
     port_map: &Option<HashMap<String, Vec<PortMapElement>>>,
-) -> Result<(), String> {
+) -> Result<()> {
     let services = output.services.as_mut().unwrap();
     for (service_name, service) in services {
         let original_definition = containers.get(service_name).unwrap();
         if service_name != main_container && original_definition.port.is_some() {
-            return Err(
-                "port: is not supported for containers other than the main container".to_string(),
-            );
+            bail!("port: is not supported for containers other than the main container",);
         }
 
         if let Some(internal_port) = original_definition.port {
             if service_name != main_container {
-                return Err(
-                    "port: is not supported for containers other than the main container"
-                        .to_string(),
-                );
+                bail!("port: is not supported for containers other than the main container",);
             }
             let public_port: Option<&PortMapElement>;
             let fake_port = PortMapElement {
@@ -116,10 +107,10 @@ fn configure_ports(
             };
             if let Some(real_port_map) = port_map {
                 if real_port_map.get(service_name).is_none() {
-                    return Err(format!(
+                    bail!(
                         "Container {} not found or invalid in port map",
                         service_name
-                    ));
+                    );
                 }
                 let ports = real_port_map.get(service_name).unwrap();
                 public_port = get_host_port(ports, internal_port);
@@ -131,7 +122,7 @@ fn configure_ports(
                     .ports
                     .push(format!("{}:{}", port_map_elem.public_port, internal_port));
             } else {
-                return Err("Main container port not found in port map".to_string());
+                bail!("Main container port not found in port map");
             }
         } else if service_name == main_container {
             let empty_vec = Vec::<PortMapElement>::with_capacity(0);
@@ -144,7 +135,7 @@ fn configure_ports(
                     .iter()
                     .any(|elem| elem.dynamic)
             {
-                return Err("A port is required for the main container".to_string());
+                bail!("A port is required for the main container");
             }
         }
         if let Some(required_ports) = &original_definition.required_ports {
@@ -169,7 +160,7 @@ fn define_ip_addresses(
     containers: &HashMap<String, types::Container>,
     main_container: &str,
     output: &mut ComposeSpecification,
-) -> Result<(), String> {
+) -> Result<()> {
     let services = output.services.as_mut().unwrap();
     for (service_name, service) in services {
         if containers
@@ -184,7 +175,7 @@ fn define_ip_addresses(
                 }
             })
         } else if service_name == main_container {
-            return Err("Network can not be disabled for the main container".to_string());
+            bail!("Network can not be disabled for the main container");
         }
     }
 
@@ -197,19 +188,13 @@ fn validate_service(
     service: &types::Container,
     replace_env_vars: &HashMap<String, String>,
     result: &mut Service,
-) -> Result<(), String> {
+) -> Result<()> {
     if let Some(entrypoint) = &service.entrypoint {
-        let validation_result = validate_cmd(app_name, entrypoint, permissions);
-        if validation_result.is_err() {
-            return Err(validation_result.err().unwrap());
-        }
+        validate_cmd(app_name, entrypoint, permissions)?;
         result.entrypoint = Some(entrypoint.to_owned());
     }
     if let Some(command) = &service.command {
-        let validation_result = validate_cmd(app_name, command, permissions);
-        if validation_result.is_err() {
-            return Err(validation_result.err().unwrap());
-        }
+        validate_cmd(app_name, command, permissions)?;
         result.command = Some(command.to_owned());
     }
     if let Some(env) = &service.environment {
@@ -221,7 +206,7 @@ fn validate_service(
                     let env_vars = find_env_vars(val);
                     for env_var in &env_vars {
                         if !permissions::is_allowed_by_permissions(app_name, env_var, permissions) {
-                            return Err(format!("Env var {} not allowed by permissions", env_var));
+                            bail!("Env var {} not allowed by permissions", env_var);
                         }
                     }
                     let mut val = val.to_owned();
@@ -259,11 +244,11 @@ fn validate_service(
             match cap.to_lowercase().as_str() {
                 "cap-net-raw" | "cap-net-admin" => {
                     if !permissions.contains(&"network".to_string()) {
-                        return Err("App defines a network capability, but does not request the network permission".to_string());
+                        bail!("App defines a network capability, but does not request the network permission".to_string());
                     }
                     cap_add.push(cap.to_owned());
                 }
-                _ => return Err(format!("App defines unknown capability: {}", cap)),
+                _ => bail!("App defines unknown capability: {}", cap),
             }
         }
         result.cap_add = Some(cap_add);
@@ -275,7 +260,7 @@ fn convert_volumes(
     containers: &HashMap<String, types::Container>,
     permissions: &[String],
     output: &mut ComposeSpecification,
-) -> Result<(), String> {
+) -> Result<()> {
     let services = output.services.as_mut().unwrap();
     for (service_name, service) in services {
         let original_definition = containers.get(service_name).unwrap();
@@ -283,9 +268,7 @@ fn convert_volumes(
             if let Some(data_mounts) = &mounts.data {
                 for (host_path, container_path) in data_mounts {
                     if host_path.contains("..") {
-                        return Err(
-                            "A data dir to mount is not allowed to contain '..'".to_string()
-                        );
+                        bail!("A data dir to mount is not allowed to contain '..'");
                     }
                     let mount_host_dir: String = if !host_path.starts_with('/') {
                         "/".to_owned() + host_path
@@ -301,10 +284,7 @@ fn convert_volumes(
 
             if let Some(bitcoin_mount) = &mounts.bitcoin {
                 if !permissions.contains(&"bitcoind".to_string()) {
-                    return Err(
-                        "bitcoin mount defined by container without Bitcoin permissions"
-                            .to_string(),
-                    );
+                    bail!("bitcoin mount defined by container without Bitcoin permissions",);
                 }
                 service
                     .volumes
@@ -313,9 +293,7 @@ fn convert_volumes(
 
             if let Some(lnd_mount) = &mounts.lnd {
                 if !permissions.contains(&"lnd".to_string()) {
-                    return Err(
-                        "lnd mount defined by container without LND permissions".to_string()
-                    );
+                    bail!("lnd mount defined by container without LND permissions");
                 }
                 service
                     .volumes
@@ -324,9 +302,8 @@ fn convert_volumes(
 
             if let Some(c_lightning_mount) = &mounts.c_lightning {
                 if !permissions.contains(&"c-lightning".to_string()) {
-                    return Err(
-                        "c-lightning mount defined by container without Core Lightning permissions"
-                            .to_string(),
+                    bail!(
+                        "c-lightning mount defined by container without Core Lightning permissions",
                     );
                 }
                 service
@@ -499,7 +476,7 @@ pub fn convert_config(
     port_map: &Option<HashMap<String, HashMap<String, Vec<PortMapElement>>>>,
     installed_services: &Option<Vec<String>>,
     ip_addresses: &Option<HashMap<String, String>>,
-) -> Result<ResultYml, String> {
+) -> Result<ResultYml> {
     let mut spec: ComposeSpecification = ComposeSpecification {
         services: Some(BTreeMap::new()),
     };
@@ -568,11 +545,7 @@ pub fn convert_config(
     // We can now finalize the process by parsing some of the remaining values
     configure_ports(&app.services, &main_service, &mut spec, &app_port_map)?;
 
-    let ip_address_result = define_ip_addresses(app_name, &app.services, &main_service, &mut spec);
-
-    if ip_address_result.is_err() {
-        return Err(ip_address_result.err().unwrap());
-    }
+    let ip_address_result = define_ip_addresses(app_name, &app.services, &main_service, &mut spec)?;
 
     convert_volumes(&app.services, &permissions, &mut spec)?;
 
@@ -667,7 +640,7 @@ mod test {
                     "Citadel team".to_string() => "runcitadel.space".to_string()
                 },
                 permissions: vec![Permissions::OneDependency("lnd".to_string())],
-                repo: map! {
+                repo: bmap! {
                     "Example repo".to_string() => "https://github.com/runcitadel/app-cli".to_string()
                 },
                 support: "https://t.me/citadeldevelopers".to_string(),
@@ -730,7 +703,7 @@ mod test {
                     "Citadel team".to_string() => "runcitadel.space".to_string()
                 },
                 permissions: vec![Permissions::OneDependency("lnd".to_string())],
-                repo: map! {
+                repo: bmap! {
                     "Example repo".to_string() => "https://github.com/runcitadel/app-cli".to_string()
                 },
                 support: "https://t.me/citadeldevelopers".to_string(),

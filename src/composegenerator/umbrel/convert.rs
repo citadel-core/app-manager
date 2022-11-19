@@ -6,7 +6,7 @@ use crate::composegenerator::umbrel::types::Metadata;
 use crate::composegenerator::v4::types::{
     AppYml, Container, InputMetadata as CitadelMetadata, Mounts,
 };
-use crate::map;
+use crate::{bmap, map};
 
 pub fn convert_metadata(metadata: Metadata) -> CitadelMetadata {
     let deps: Vec<Permissions> = metadata
@@ -24,7 +24,7 @@ pub fn convert_metadata(metadata: Metadata) -> CitadelMetadata {
     CitadelMetadata {
         name: metadata.name,
         version: metadata.version.clone(),
-        repo: map! {
+        repo: bmap! {
             "Public" => metadata.repo
         },
         support: metadata.support,
@@ -47,10 +47,7 @@ pub fn convert_metadata(metadata: Metadata) -> CitadelMetadata {
         implements: None,
         version_control: None,
         release_notes: if let Some(release_notes) = metadata.release_notes {
-            Some(BTreeMap::from([(
-                metadata.version,
-                release_notes,
-            )]))
+            Some(BTreeMap::from([(metadata.version, release_notes)]))
         } else {
             None
         },
@@ -132,12 +129,6 @@ pub fn convert_compose(
                 );
             }
         }
-        // Loop through environment (a Option<hashmap>) and in all values, make these replacements
-        // APP_BITCOIN_NETWORK -> BITCOIN_NETWORK
-        // APP_PASSWORD -> APP_SEED
-        // APP_LIGHTNING_NODE_GRPC_PORT -> LND_GRPC_PORT
-        // APP_LIGHTNING_NODE_REST_PORT -> LND_REST_PORT
-        // APP_LIGHTNING_NODE_IP -> LND_IP
         let mut env: Option<HashMap<String, StringOrIntOrBool>> = Some(HashMap::new());
         let original_env = match service_def.environment {
             Some(env) => match env {
@@ -145,12 +136,15 @@ pub fn convert_compose(
                     let mut map = HashMap::<String, StringOrIntOrBool>::new();
                     for val in list {
                         let mut split = val.split('=');
-                        map.insert(
-                            split.next().expect("Env var invalid").to_string(),
-                            StringOrIntOrBool::String(
-                                split.next().expect("Env var invalid").to_string(),
-                            ),
-                        );
+                        let Some(key) = split.next() else {
+                            eprintln!("Encountered invalid env var: {}", val);
+                            continue;
+                        };
+                        let Some(value) = split.next() else {
+                            eprintln!("Encountered invalid env var: {}", val);
+                            continue;
+                        };
+                        map.insert(key.to_string(), StringOrIntOrBool::String(value.to_string()));
                     }
                     map
                 }

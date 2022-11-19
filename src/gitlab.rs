@@ -4,6 +4,7 @@ use gitlab::AsyncGitlab;
 use semver::Version;
 use serde::Deserialize;
 use url::Url;
+use anyhow::{bail, Result};
 
 // The API has more data, but we only need this
 #[derive(Debug, Deserialize)]
@@ -16,33 +17,24 @@ pub async fn check_updates(
     repo: String,
     current_version: &Version,
     include_pre: bool,
-) -> Result<String, String> {
-    let endpoint = Tags::builder().project(repo).build();
-    if let Err(err) = endpoint {
-        return Err(err.to_string());
-    }
-    let endpoint = endpoint.unwrap();
-    let result = endpoint.query_async(gitlab).await;
-    if let Err(tag_error) = result {
-        return Err(tag_error.to_string());
-    }
-    let tags: Vec<Tag> = result.unwrap();
+) -> Result<String> {
+    let endpoint = Tags::builder().project(repo).build()?;
+    let tags: Vec<Tag> = endpoint.query_async(gitlab).await?;
     for tag in tags {
         let tag = tag.name;
         // Remove the v prefix if it exists
         let tag = tag.trim_start_matches('v');
         let version = Version::parse(tag);
-        if let Err(err) = version {
-            eprintln!("Error while parsing tag {}: {}", tag, err);
+        let Ok(version) = version else {
+            eprintln!("Error while parsing tag {}: {}", tag, version.unwrap_err());
             continue;
-        }
-        let version = version.unwrap();
+        };
         if (include_pre || version.pre.is_empty()) && &version > current_version {
             return Ok(tag.to_string());
         }
     }
 
-    Err("No update found".to_string())
+    bail!("No update found")
 }
 
 // Given a GitLab repository path, return the name of the GitLab instance

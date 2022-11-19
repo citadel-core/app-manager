@@ -1,33 +1,25 @@
 use semver::Version;
+use anyhow::{bail, Result};
 
 pub async fn check_updates(
     owner: &String,
     repo: &String,
     current_version: &Version,
     include_pre: bool,
-) -> Result<String, String> {
+) -> Result<String> {
     let octocrab = octocrab::instance();
-    let tags = octocrab.repos(owner, repo).list_tags().send().await;
-    if let Err(tag_error) = tags {
-        return Err(tag_error.to_string());
-    }
-    let tags = tags.unwrap().take_items();
+    let tags = octocrab.repos(owner, repo).list_tags().send().await?.take_items();
     for tag in tags {
         let tag = tag.name;
         // Remove the v prefix if it exists
         let tag = tag.trim_start_matches('v');
-        let version = Version::parse(tag);
-        if let Err(err) = version {
-            eprintln!("Error while parsing tag {}: {}", tag, err);
-            continue;
-        }
-        let version = version.unwrap();
+        let version = Version::parse(tag)?;
         if (include_pre || version.pre.is_empty()) && &version > current_version {
             return Ok(tag.to_string());
         }
     }
 
-    Err("No update found".to_string())
+    bail!("No update found")
 }
 
 // Check if a string is a valid GitHub repository path (https://github.com/owner/repo),

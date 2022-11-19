@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, BTreeMap};
 
 #[cfg(feature = "schema")]
 use schemars::JsonSchema;
@@ -26,7 +26,7 @@ pub enum HiddenServices {
 #[serde(untagged)]
 pub enum RepoDefinition {
     RepoUrl(String),
-    MultiRepo(HashMap<String, String>),
+    MultiRepo(BTreeMap<String, String>),
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Default, Deserialize, Serialize)]

@@ -5,11 +5,12 @@ use crate::composegenerator::v4::{
     convert::convert_config as convert_config_v4, types as types_v4,
 };
 use crate::utils::flatten;
-use std::collections::HashMap;
+use anyhow::Result;
+use std::collections::{BTreeMap, HashMap};
 
 pub fn v3_to_v4(app: AppYmlV3, installed_services: &Option<&Vec<String>>) -> types_v4::AppYml {
     let repo = match app.metadata.repo {
-        super::types::RepoDefinition::RepoUrl(url) => HashMap::from([("Public".to_string(), url)]),
+        super::types::RepoDefinition::RepoUrl(url) => BTreeMap::from([("Public".to_string(), url)]),
         super::types::RepoDefinition::MultiRepo(map) => map,
     };
     let metadata = types_v4::InputMetadata {
@@ -103,16 +104,19 @@ pub fn v3_to_v4(app: AppYmlV3, installed_services: &Option<&Vec<String>>) -> typ
                 ))
             }
             let mut split = value.split(':');
-            mounts.data.as_mut().unwrap().insert(
-                split
-                    .next()
-                    .expect("Failed to parse data value")
-                    .to_string(),
-                split
-                    .next()
-                    .expect("Failed to parse data value")
-                    .to_string(),
-            );
+            let Some(key) = split.next() else {
+                eprintln!("Encountered invalid mount: {}", value);
+                continue;
+            };
+            let Some(value) = split.next() else {
+                eprintln!("Encountered invalid env var: {}", value);
+                continue;
+            };
+            mounts
+                .data
+                .as_mut()
+                .unwrap()
+                .insert(key.to_string(), value.to_string());
         }
 
         services.insert(
@@ -181,7 +185,7 @@ pub fn convert_config(
     port_map: &Option<HashMap<String, HashMap<String, Vec<PortMapElement>>>>,
     installed_services: &Vec<String>,
     ip_addresses: &Option<HashMap<String, String>>,
-) -> Result<ResultYml, String> {
+) -> Result<ResultYml> {
     convert_config_v4(
         app_name,
         v3_to_v4(app, &Some(installed_services)),

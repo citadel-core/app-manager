@@ -6,6 +6,7 @@ use super::permissions;
 use super::types::PortMapElement;
 use crate::composegenerator::compose::types::Command;
 use crate::utils::find_env_vars;
+use anyhow::{bail, Result};
 use hex;
 use hmac_sha256::HMAC;
 use serde_json::Value::Object;
@@ -17,17 +18,13 @@ pub fn derive_entropy(seed: &str, identifier: &str) -> String {
     hex::encode(result)
 }
 
-pub fn validate_cmd(
-    app_name: &str,
-    command: &Command,
-    permissions: &[String],
-) -> Result<(), String> {
+pub fn validate_cmd(app_name: &str, command: &Command, permissions: &[String]) -> Result<()> {
     match command {
         Command::SimpleCommand(simple_command) => {
             let env_vars = find_env_vars(simple_command);
             for env_var in env_vars {
                 if !permissions::is_allowed_by_permissions(app_name, env_var, permissions) {
-                    return Err(format!("Env var {} not allowed by permissions", env_var));
+                    bail!("Env var {} not allowed by permissions", env_var);
                 }
             }
         }
@@ -36,7 +33,7 @@ pub fn validate_cmd(
                 let env_vars = find_env_vars(value);
                 for env_var in env_vars {
                     if !permissions::is_allowed_by_permissions(app_name, env_var, permissions) {
-                        return Err(format!("Env var {} not allowed by permissions", env_var));
+                        bail!("Env var {} not allowed by permissions", env_var);
                     }
                 }
             }
@@ -53,11 +50,11 @@ pub fn get_host_port(port_map: &[PortMapElement], internal_port: u16) -> Option<
 
 pub fn validate_port_map_app(
     port_map_app: &Map<String, Value>,
-) -> Result<HashMap<String, Vec<PortMapElement>>, serde_json::Error> {
-    serde_json::from_value::<HashMap<String, Vec<PortMapElement>>>(Object(port_map_app.to_owned()))
+) -> Result<HashMap<String, Vec<PortMapElement>>> {
+    Ok(serde_json::from_value::<HashMap<String, Vec<PortMapElement>>>(Object(port_map_app.to_owned()))?)
 }
 
-pub fn get_main_container(spec: &super::types::AppYml) -> Result<String, String> {
+pub fn get_main_container(spec: &super::types::AppYml) -> Result<String> {
     if spec.services.len() == 1 {
         return Ok(spec.services.keys().next().unwrap().clone());
     }
@@ -78,7 +75,7 @@ pub fn get_main_container(spec: &super::types::AppYml) -> Result<String, String>
                     service_name,
                     main_service_name.unwrap()
                 );
-                return Err("Multiple main containers in app!".to_string());
+                bail!("Multiple main containers in app!");
             }
             main_service_name = Some(service_name.to_string());
         }
@@ -86,7 +83,7 @@ pub fn get_main_container(spec: &super::types::AppYml) -> Result<String, String>
     if let Some(main_name) = main_service_name {
         Ok(main_name)
     } else {
-        Err("No main container found!".to_string())
+        bail!("No main container found!")
     }
 }
 

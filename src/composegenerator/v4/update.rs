@@ -2,8 +2,9 @@ use bollard::{image::CreateImageOptions, Docker};
 
 use super::types::Container;
 use futures_util::stream::TryStreamExt;
+use anyhow::{bail, Result};
 
-pub async fn get_hash(container: &str, docker: &Docker) -> Result<String, bollard::errors::Error> {
+pub async fn get_hash(container: &str, docker: &Docker) -> Result<String> {
     println!("Pulling {}...", container);
     docker
         .create_image(
@@ -17,8 +18,12 @@ pub async fn get_hash(container: &str, docker: &Docker) -> Result<String, bollar
         .try_collect::<Vec<_>>()
         .await?;
     let hash = docker.inspect_image(container).await?;
-    let digests = hash.repo_digests.expect("No digest found!");
-    let result = digests.first().expect("No digest found!");
+    let Some(digests) = hash.repo_digests else {
+        bail!("No digest found for {}", container);
+    };
+    let Some(result) = digests.first() else {
+        bail!("No digest found for {}", container);
+    };
 
     Ok(result.to_owned().split('@').last().unwrap().to_owned())
 }
@@ -27,9 +32,11 @@ pub async fn update_container(
     container: &mut Container,
     to_version: &String,
     docker: &Docker,
-) -> Result<(), bollard::errors::Error> {
+) -> Result<()> {
     let image = &container.image;
-    let image_without_tag = image.split(':').next().expect("Splitting failed");
+    let Some(image_without_tag) = image.split(':').next() else {
+        bail!("Image {} does not contain a tag", image);
+    };
     let mut new_tag = image_without_tag.to_owned() + ":" + to_version;
     let new_hash = get_hash(&new_tag, docker).await;
     let hash: String;
