@@ -545,7 +545,7 @@ pub fn convert_config(
     // We can now finalize the process by parsing some of the remaining values
     configure_ports(&app.services, &main_service, &mut spec, &app_port_map)?;
 
-    let ip_address_result = define_ip_addresses(app_name, &app.services, &main_service, &mut spec)?;
+    define_ip_addresses(app_name, &app.services, &main_service, &mut spec)?;
 
     convert_volumes(&app.services, &permissions, &mut spec)?;
 

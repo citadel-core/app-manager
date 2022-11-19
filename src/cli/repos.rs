@@ -286,7 +286,7 @@ pub fn list_updates(citadel_root: &str) -> Result<()> {
                         updatable_apps.push(AppUpdateInfo {
                             id: app_id,
                             new_version: app_config.metadata.version,
-                            release_notes: app_config.metadata.release_notes.unwrap_or_else(|| BTreeMap::new()),
+                            release_notes: app_config.metadata.release_notes.unwrap_or_default(),
                         })
                     }
                 }

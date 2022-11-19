@@ -27,6 +27,7 @@ pub fn preprocess_apps(citadel_root: &Path, app_dir: &Path) {
 
     let mut env_vars = Vec::new();
 
+    #[allow(deprecated)]
     if let Ok(dot_env) = dotenv::from_filename_iter(citadel_root.join(".env")) {
         env_vars = dot_env.collect();
     }

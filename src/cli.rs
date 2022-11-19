@@ -182,7 +182,7 @@ pub fn convert_dir(citadel_root: &str) {
         eprintln!("Warning: Citadel does not seem to be set up yet!");
     }
 
-    preprocessing::preprocess_apps(&citadel_root, &citadel_root.join("apps"));
+    preprocessing::preprocess_apps(citadel_root, &citadel_root.join("apps"));
 
     for app in apps {
         let app = app.expect("Error reading app directory!");
