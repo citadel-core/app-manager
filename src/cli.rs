@@ -114,7 +114,7 @@ pub fn convert_dir(citadel_root: &str) {
     let mut validate_port = |app: &str,
                              container: &str,
                              suggested_port: u16,
-                             priority: &PortPriority,
+                             priority: PortPriority,
                              dynamic: bool,
                              implements: Option<String>| {
         let get_new_port = |app: &str, container: &str, mut suggested_port: u16| -> u16 {
@@ -137,7 +137,7 @@ pub fn convert_dir(citadel_root: &str) {
             {
                 return;
             }
-            if key.priority > *priority {
+            if key.priority > priority {
                 // Move the existing app to a new port
                 let new_port = get_new_port(&key.app, &key.container, suggested_port);
                 let new_port_map = port_map_cache.remove(&suggested_port).unwrap();
@@ -151,7 +151,7 @@ pub fn convert_dir(citadel_root: &str) {
                         container: container.to_string(),
                         dynamic,
                         implements,
-                        priority: *priority,
+                        priority,
                     },
                 );
             } else {
@@ -165,7 +165,7 @@ pub fn convert_dir(citadel_root: &str) {
                         container: container.to_string(),
                         dynamic,
                         implements,
-                        priority: *priority,
+                        priority,
                     },
                 );
             }
@@ -178,7 +178,7 @@ pub fn convert_dir(citadel_root: &str) {
                     container: container.to_string(),
                     dynamic,
                     implements,
-                    priority: *priority,
+                    priority,
                 },
             );
         }
@@ -282,7 +282,7 @@ pub fn convert_dir(citadel_root: &str) {
                         app_id,
                         &service_name,
                         main_port,
-                        &service.port_priority.unwrap_or(PortPriority::Optional),
+                        service.port_priority.unwrap_or(PortPriority::Optional),
                         false,
                         app_yml.metadata.implements.clone(),
                     );
@@ -291,7 +291,7 @@ pub fn convert_dir(citadel_root: &str) {
                         app_id,
                         &service_name,
                         3000,
-                        &PortPriority::Optional,
+                        PortPriority::Optional,
                         true,
                         app_yml.metadata.implements.clone(),
                     );
@@ -303,7 +303,7 @@ pub fn convert_dir(citadel_root: &str) {
                                 app_id,
                                 &service_name,
                                 host_port,
-                                &PortPriority::Required,
+                                PortPriority::Required,
                                 false,
                                 app_yml.metadata.implements.clone(),
                             );
@@ -315,7 +315,7 @@ pub fn convert_dir(citadel_root: &str) {
                                 app_id,
                                 &service_name,
                                 host_port,
-                                &PortPriority::Required,
+                                PortPriority::Required,
                                 false,
                                 app_yml.metadata.implements.clone(),
                             );
