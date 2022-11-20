@@ -1,5 +1,5 @@
-use std::{path::Path, io::Read, collections::HashMap};
 use crate::composegenerator::compose::types::ComposeSpecification;
+use std::{collections::HashMap, io::Read, path::Path};
 
 use super::{tera, UserJson};
 
@@ -35,7 +35,6 @@ pub fn preprocess_apps(citadel_root: &Path, app_dir: &Path) {
     if env_vars.is_empty() && citadel_seed.is_none() {
         eprintln!("Warning: Citadel does not seem to be set up yet!");
     }
-
 
     let mut services = Vec::<String>::new();
     let user_json = std::fs::File::open(citadel_root.join("db").join("user.json"));

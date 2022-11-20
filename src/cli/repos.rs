@@ -435,7 +435,9 @@ pub fn download_new_apps(citadel_root: &str) -> Result<()> {
                         eprintln!("No compatible version found for {}", source.repo);
                         continue;
                     };
-                let mut out_app_store = stores.iter_mut().find(|s| s.repo == source.repo && s.branch == source.branch);
+                let mut out_app_store = stores
+                    .iter_mut()
+                    .find(|s| s.repo == source.repo && s.branch == source.branch);
                 if out_app_store.is_none() {
                     stores.push(AppStoreInfo {
                         id: app_store.id,
@@ -450,7 +452,9 @@ pub fn download_new_apps(citadel_root: &str) -> Result<()> {
                         branch: source.branch.clone(),
                         subdir: subdir.clone(),
                     });
-                    out_app_store = stores.iter_mut().find(|s| s.repo == source.repo && s.branch == source.branch);
+                    out_app_store = stores
+                        .iter_mut()
+                        .find(|s| s.repo == source.repo && s.branch == source.branch);
                 };
                 let out_app_store = out_app_store.unwrap();
                 let subdir_path = Path::new(&subdir);

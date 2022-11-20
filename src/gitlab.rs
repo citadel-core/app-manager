@@ -1,10 +1,10 @@
+use anyhow::{bail, Result};
 use gitlab::api::projects::repository::tags::Tags;
 use gitlab::api::AsyncQuery;
 use gitlab::AsyncGitlab;
 use semver::Version;
 use serde::Deserialize;
 use url::Url;
-use anyhow::{bail, Result};
 
 // The API has more data, but we only need this
 #[derive(Debug, Deserialize)]

@@ -51,7 +51,9 @@ pub fn get_host_port(port_map: &[PortMapElement], internal_port: u16) -> Option<
 pub fn validate_port_map_app(
     port_map_app: &Map<String, Value>,
 ) -> Result<HashMap<String, Vec<PortMapElement>>> {
-    Ok(serde_json::from_value::<HashMap<String, Vec<PortMapElement>>>(Object(port_map_app.to_owned()))?)
+    Ok(serde_json::from_value::<
+        HashMap<String, Vec<PortMapElement>>,
+    >(Object(port_map_app.to_owned()))?)
 }
 
 pub fn get_main_container(spec: &super::types::AppYml) -> Result<String> {
