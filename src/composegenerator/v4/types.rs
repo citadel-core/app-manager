@@ -88,7 +88,7 @@ pub struct Container {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mounts: Option<Mounts>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub enable_networking: Option<bool>,
+    pub assign_fixed_ip: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub hidden_services: Option<HiddenServices>,
 }

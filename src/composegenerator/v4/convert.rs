@@ -166,7 +166,7 @@ fn define_ip_addresses(
         if containers
             .get(service_name)
             .unwrap()
-            .enable_networking
+            .assign_fixed_ip
             .unwrap_or(true)
         {
             service.networks = Some(bmap! {
