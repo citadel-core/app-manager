@@ -389,7 +389,7 @@ pub fn convert_dir(citadel_root: &str) {
             eprintln!(
                 "Error converting app.yml for app {}: {}",
                 app_id,
-                conversion_result.err().unwrap()
+                conversion_result.unwrap_err()
             );
         }
     }

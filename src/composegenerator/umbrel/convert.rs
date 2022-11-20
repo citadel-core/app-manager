@@ -234,7 +234,7 @@ pub fn convert_compose(
             port_priority: None,
             required_ports: None,
             mounts,
-            enable_networking: if service_def.networks.is_some() {
+            assign_fixed_ip: if service_def.networks.is_some() {
                 None
             } else {
                 Some(false)

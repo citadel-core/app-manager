@@ -71,9 +71,9 @@ pub fn v3_to_v4(app: AppYmlV3, installed_services: &Option<&Vec<String>>) -> typ
             }
             required_ports = Some(required_ports_def);
         }
-        let mut enable_networking = None;
+        let mut assign_fixed_ip = None;
         if container.no_network.unwrap_or(false) {
-            enable_networking = Some(false);
+            assign_fixed_ip = Some(false);
         }
         let mut mounts = types_v4::Mounts {
             bitcoin: None,
@@ -139,7 +139,7 @@ pub fn v3_to_v4(app: AppYmlV3, installed_services: &Option<&Vec<String>>) -> typ
                 port_priority,
                 required_ports,
                 mounts: Some(mounts),
-                enable_networking,
+                assign_fixed_ip,
                 hidden_services: container.hidden_service_ports.map(|value| match value {
                     super::types::HiddenServices::PortMap(map) => {
                         types_v4::HiddenServices::PortMap(map)

@@ -5,7 +5,7 @@ use futures_util::stream::TryStreamExt;
 use anyhow::{bail, Result};
 
 pub async fn get_hash(container: &str, docker: &Docker) -> Result<String> {
-    println!("Pulling {}...", container);
+    tracing::info!("Pulling {}...", container);
     docker
         .create_image(
             Some(CreateImageOptions {

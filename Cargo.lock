@@ -231,6 +231,7 @@ dependencies = [
  "hex",
  "hmac-sha256",
  "lazy_static",
+ "libz-sys",
  "octocrab",
  "pretty_assertions",
  "regex",
