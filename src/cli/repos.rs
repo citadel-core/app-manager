@@ -1,12 +1,16 @@
-use std::{collections::{HashMap, BTreeMap}, fs::File, path::Path};
+use std::{
+    collections::{BTreeMap, HashMap},
+    fs::File,
+    path::Path,
+};
 
+use super::{preprocessing::preprocess_apps, UserJson};
 use anyhow::Result;
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use tempdir::TempDir;
-use super::{preprocessing::preprocess_apps, UserJson};
 
-use crate::{constants::MINIMUM_COMPATIBLE_APP_MANAGER, composegenerator::load_config_as_v4};
+use crate::{composegenerator::load_config_as_v4, constants::MINIMUM_COMPATIBLE_APP_MANAGER};
 
 mod git;
 
@@ -258,14 +262,20 @@ pub fn list_updates(citadel_root: &str) -> Result<()> {
                     if subdir != store.subdir {
                         all_store_updatable_apps = store.apps.clone().into_keys().collect();
                     } else {
-                        let latest_commits = git::get_latest_commit_for_apps(tmp_dir.path(), &subdir, &store.apps.clone().into_keys().collect::<Vec<String>>());
+                        let latest_commits = git::get_latest_commit_for_apps(
+                            tmp_dir.path(),
+                            &subdir,
+                            &store.apps.clone().into_keys().collect::<Vec<String>>(),
+                        );
                         let Ok(mut latest_commits) = latest_commits else {
                             eprintln!("Failed to get latest commits for apps in {}", store.repo);
                             continue;
                         };
-                        latest_commits.retain(|app_id, commit| store.apps.contains_key(app_id) && store.apps.get(app_id).unwrap() != commit);
+                        latest_commits.retain(|app_id, commit| {
+                            store.apps.contains_key(app_id)
+                                && store.apps.get(app_id).unwrap() != commit
+                        });
                         all_store_updatable_apps = latest_commits.into_keys().collect();
-
                     }
                     let subdir_path = tmp_dir.path().join(subdir);
                     all_store_updatable_apps.retain(|v| subdir_path.join(v).exists());
@@ -356,19 +366,136 @@ pub fn download_app(citadel_root: &str, app: &str) -> Result<()> {
             }
             std::fs::create_dir_all(&citadel_app_dir)?;
 
-            fs_extra::dir::copy(&app_dir, &citadel_root.join("apps"), &fs_extra::dir::CopyOptions {
-                overwrite: true,
-                ..Default::default()
-            })?;
-        },
+            fs_extra::dir::copy(
+                &app_dir,
+                &citadel_root.join("apps"),
+                &fs_extra::dir::CopyOptions {
+                    overwrite: true,
+                    ..Default::default()
+                },
+            )?;
+        }
         _ => {
             eprintln!("Unknown app store version: {}", app_store_version);
             return Ok(());
         }
     }
 
+    Ok(())
+}
 
+pub fn download_new_apps(citadel_root: &str) -> Result<()> {
+    let citadel_root = Path::new(citadel_root);
+    let sources_yml = citadel_root.join("apps").join("sources.yml");
+    if !sources_yml.exists() {
+        let default_passwords = vec![AppSrc {
+            repo: "https://github.com/citadel-core/apps".to_string(),
+            branch: "main".to_string(),
+        }];
+        let mut file = File::create(&sources_yml)?;
+        serde_yaml::to_writer(&mut file, &default_passwords)?;
+    }
+    let sources_yml = std::fs::File::open(sources_yml)?;
+    let sources: Vec<AppSrc> = serde_yaml::from_reader(sources_yml)?;
+    let mut installed_apps: Vec<String> = vec![];
+    let citadel_root = Path::new(citadel_root);
+    let stores_yml = citadel_root.join("apps").join("stores.yml");
+    let stores_yml = std::fs::File::open(stores_yml)?;
+    let mut stores = serde_yaml::from_reader::<File, Vec<AppStoreInfo>>(stores_yml)?;
+    // For each AppSrc, clone the repo into a tempdir
+    for source in sources {
+        let tmp_dir = TempDir::new("citadel_app")?;
+        git::clone(&source.repo, &source.branch, tmp_dir.path())?;
+        // Read the app-store.yml, and match the store_version
+        let app_store_yml = tmp_dir.path().join("app-store.yml");
+        let app_store_yml = std::fs::File::open(app_store_yml);
+        let Ok(app_store_yml) = app_store_yml else {
+            eprintln!("No app-store.yml found in {}", source.repo);
+            continue;
+        };
+        let app_store = serde_yaml::from_reader::<File, serde_yaml::Value>(app_store_yml);
+        let Ok(app_store) = app_store else {
+            eprintln!("Failed to load app-store.yml in {}", source.repo);
+            continue;
+        };
+        let app_store_version = app_store.get("store_version");
+        if app_store_version.is_none() || !app_store_version.unwrap().is_u64() {
+            eprintln!("App store version not defined.");
+            continue;
+        }
+        let app_store_version = app_store_version.unwrap().as_u64().unwrap();
+        match app_store_version {
+            1 => {
+                let app_store = serde_yaml::from_value::<AppStoreV1>(app_store);
+                let Ok(app_store) = app_store else {
+                    eprintln!("Failed to load app-store.yml in {}", source.repo);
+                    continue;
+                };
+                let Some(subdir) = get_subdir(&app_store) else {
+                        eprintln!("No compatible version found for {}", source.repo);
+                        continue;
+                    };
+                let mut out_app_store = stores.iter_mut().find(|s| s.repo == source.repo && s.branch == source.branch);
+                if out_app_store.is_none() {
+                    stores.push(AppStoreInfo {
+                        id: app_store.id,
+                        name: app_store.name,
+                        tagline: app_store.tagline,
+                        icon: app_store.icon,
+                        developers: app_store.developers,
+                        license: app_store.license,
+                        apps: HashMap::new(),
+                        commit: git::get_commit(tmp_dir.path())?,
+                        repo: source.repo.clone(),
+                        branch: source.branch.clone(),
+                        subdir: subdir.clone(),
+                    });
+                    out_app_store = stores.iter_mut().find(|s| s.repo == source.repo && s.branch == source.branch);
+                };
+                let out_app_store = out_app_store.unwrap();
+                let subdir_path = Path::new(&subdir);
+                // Copy all dirs from the subdir to the apps dir
+                // Overwrite any existing files
+                // Skip apps that are already in installed_apps
+                let mut store_apps = vec![];
+                for entry in std::fs::read_dir(tmp_dir.path().join(subdir_path))? {
+                    let entry = entry?;
+                    let app_id = entry.file_name().to_str().unwrap().to_string();
+                    if citadel_root.join("apps").join(&app_id).exists() {
+                        continue;
+                    }
+                    fs_extra::dir::copy(
+                        entry.path(),
+                        citadel_root.join("apps"),
+                        &fs_extra::dir::CopyOptions {
+                            overwrite: true,
+                            skip_exist: true,
+                            buffer_size: 64000,
+                            copy_inside: true,
+                            depth: 0,
+                            content_only: false,
+                        },
+                    )?;
+                    installed_apps.push(app_id.clone());
+                    store_apps.push(app_id);
+                }
+                let new_apps =
+                    git::get_latest_commit_for_apps(tmp_dir.path(), &subdir, &installed_apps)?;
+                out_app_store
+                    .apps
+                    .extend(new_apps.iter().map(|(k, v)| (k.clone(), v.clone())));
+            }
+            _ => {
+                eprintln!("Unknown app store version: {}", app_store_version);
+                continue;
+            }
+        }
+    }
+
+    // Save stores to apps/stores.yml
+    let stores_yml = citadel_root.join("apps").join("stores.yml");
+    let mut file = File::create(&stores_yml)?;
+    serde_yaml::to_writer(&mut file, &stores)?;
 
     Ok(())
-
 }
