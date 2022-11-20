@@ -58,7 +58,7 @@ fn get_main_port(
                 result = internal_port;
                 break;
             } else {
-                bail!("Main container port not found in port map".to_string());
+                bail!("Main container port not found in port map");
             }
         } else if service_name == main_container {
             let empty_vec = Vec::<PortMapElement>::with_capacity(0);
@@ -74,7 +74,7 @@ fn get_main_port(
             } else if port_map.is_none() {
                 result = 3000;
             } else {
-                bail!("A port is required for the main container".to_string());
+                bail!("A port is required for the main container");
             }
         }
     }
@@ -128,7 +128,7 @@ fn configure_ports(
             let empty_vec = Vec::<PortMapElement>::with_capacity(0);
             if port_map.is_some()
                 && !port_map
-                    .clone()
+                    .as_ref()
                     .unwrap()
                     .get(service_name)
                     .unwrap_or(&empty_vec)
@@ -244,7 +244,7 @@ fn validate_service(
             match cap.to_lowercase().as_str() {
                 "cap-net-raw" | "cap-net-admin" => {
                     if !permissions.contains(&"network".to_string()) {
-                        bail!("App defines a network capability, but does not request the network permission".to_string());
+                        bail!("App defines a network capability, but does not request the network permission");
                     }
                     cap_add.push(cap.to_owned());
                 }
@@ -499,7 +499,7 @@ pub fn convert_config(
                     }
                 }
             }
-            app_port_map = Some(app_port_map_entry.clone());
+            app_port_map = Some(entry);
         }
     }
     let main_port = get_main_port(&app.services, &main_service, &app_port_map)?;
