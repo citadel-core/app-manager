@@ -34,7 +34,7 @@ struct PortCacheMapEntry {
 // Outside port -> app
 type PortCacheMap = HashMap<u16, PortCacheMapEntry>;
 
-static RESERVED_PORTS: [u16; 6] = [
+static RESERVED_PORTS: [u16; 4] = [
     80,    // Dashboard
     433,   // Sometimes used by nginx with some setups
     443,   // Dashboard SSL
