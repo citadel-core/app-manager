@@ -233,7 +233,7 @@ fn validate_service(
     if service.network_mode.is_some() {
         if !permissions.contains(&"network".to_string()) {
             // To preserve compatibility, this is only a warning, but we add the permission to the output
-            tracing::error!("App defines network-mode, but does not request the network permission");
+            tracing::warn!("App defines network-mode, but does not request the network permission");
             permissions.push("network".to_string());
         }
         result.network_mode = service.network_mode.to_owned();
@@ -444,7 +444,7 @@ fn get_i2p_tunnels(
             result += hidden_service_string.as_str();
         }
         if original_definition.hidden_services.is_some() {
-            tracing::error!("Multi-port hidden services are not yet supported for I2P on Citadel!");
+            tracing::info!("Multi-port hidden services are not yet supported for I2P on Citadel!");
         }
     }
 
