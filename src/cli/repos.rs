@@ -212,7 +212,7 @@ pub fn list_updates(citadel_root: &str) -> Result<()> {
             services = user_json.installed_apps;
         }
     }
-    services.append(&mut vec!["bitcoind".to_string(), "lnd".to_string()]);
+    services.append(&mut vec!["bitcoind".to_string(), "c-lightning".to_string()]);
 
     let mut updatable_apps = vec![];
 

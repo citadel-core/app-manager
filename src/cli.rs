@@ -39,8 +39,6 @@ static RESERVED_PORTS: [u16; 6] = [
     433,   // Sometimes used by nginx with some setups
     443,   // Dashboard SSL
     8333,  // Bitcoin Core P2P
-    10009, // LND gRPC
-    8080,  // LND REST
 ];
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -68,7 +66,7 @@ pub fn convert_dir(citadel_root: &str) {
             services = user_json.installed_apps;
         }
     }
-    services.append(&mut vec!["bitcoind".to_string(), "lnd".to_string()]);
+    services.append(&mut vec!["bitcoind".to_string(), "c-lightning".to_string()]);
 
     let mut citadel_seed = None;
 
