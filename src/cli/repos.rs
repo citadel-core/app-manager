@@ -298,7 +298,7 @@ pub fn list_updates(citadel_root: &str) -> Result<()> {
         }
     }
 
-    let updates_yml = citadel_root.join("updates.yml");
+    let updates_yml = citadel_root.join("apps").join("updates.yml");
     let mut file = File::create(&updates_yml)?;
     serde_yaml::to_writer(&mut file, &updatable_apps)?;
 
