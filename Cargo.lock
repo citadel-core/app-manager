@@ -246,6 +246,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "url",
+ "void",
 ]
 
 [[package]]

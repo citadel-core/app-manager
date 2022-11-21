@@ -11,3 +11,5 @@ pub mod hosted_git;
 #[cfg(feature = "dev-tools")]
 pub mod updates;
 pub mod utils;
+#[cfg(feature = "umbrel")]
+mod conch;
