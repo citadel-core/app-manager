@@ -10,7 +10,7 @@ use semver::Version;
 use serde::{Deserialize, Serialize};
 use tempdir::TempDir;
 
-use crate::{composegenerator::load_config_as_v4, constants::MINIMUM_COMPATIBLE_APP_MANAGER};
+use crate::{composegenerator::load_config_as_v4, constants::MINIMUM_COMPATIBLE_APP_MANAGER, map};
 
 mod git;
 
@@ -32,7 +32,6 @@ struct AppStoreV1 {
     license: String,
 
     content: HashMap<String, String>,
-    apps: Option<Vec<String>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -55,6 +54,13 @@ struct AppUpdateInfo {
     id: String,
     new_version: String,
     release_notes: BTreeMap<String, String>,
+}
+
+#[cfg(feature = "umbrel")]
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct UmbrelAppStore {
+    id: String,
+    name: String,
 }
 
 fn get_subdir(app_store: &AppStoreV1) -> Option<String> {
@@ -408,6 +414,35 @@ pub fn download_new_apps(citadel_root: &str) -> Result<()> {
         git::clone(&source.repo, &source.branch, tmp_dir.path())?;
         // Read the app-store.yml, and match the store_version
         let app_store_yml = tmp_dir.path().join("app-store.yml");
+        #[cfg(feature = "umbrel")]
+        {
+            if !app_store_yml.exists() {
+                let umbrel_app_store_yml = tmp_dir.path().join("umbrel-app-store.yml");
+                let umbrel_app_store_yml = std::fs::File::open(umbrel_app_store_yml);
+                let Ok(umbrel_app_store_yml) = umbrel_app_store_yml else {
+                    continue;
+                };
+                let umbrel_app_store =
+                    serde_yaml::from_reader::<File, UmbrelAppStore>(umbrel_app_store_yml);
+                let Ok(umbrel_app_store) = umbrel_app_store else {
+                    continue;
+                };
+                let citadel_app_store = AppStoreV1 {
+                    store_version: 1,
+                    id: umbrel_app_store.id,
+                    name: umbrel_app_store.name,
+                    tagline: "An app store built for Umbrel".to_string(),
+                    icon: "https:/images.runcitadel.space/stores/umbrel-compat.svg".to_string(),
+                    developers: "Unknown".to_string(),
+                    license: "Unknown".to_string(),
+                    content: map! {
+                        env!("CARGO_PKG_VERSION") => ".".to_string()
+                    },
+                };
+                let mut file = File::create(&app_store_yml)?;
+                serde_yaml::to_writer(&mut file, &citadel_app_store)?;
+            }
+        }
         let app_store_yml = std::fs::File::open(app_store_yml);
         let Ok(app_store_yml) = app_store_yml else {
             eprintln!("No app-store.yml found in {}", source.repo);
