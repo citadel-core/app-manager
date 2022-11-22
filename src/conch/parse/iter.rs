@@ -4,7 +4,6 @@ use crate::conch::parse::SourcePos;
 use crate::conch::token::Token;
 use crate::conch::token::Token::*;
 use std::iter as std_iter;
-use std::mem;
 
 /// Indicates an error such that EOF was encountered while some unmatched
 /// tokens were still pending. The error stores the unmatched token
@@ -313,7 +312,7 @@ pub struct Multipeek<'a> {
 
 impl<'a> Drop for Multipeek<'a> {
     fn drop(&mut self) {
-        let tokens = mem::replace(&mut self.buf, Vec::new());
+        let tokens = std::mem::take(&mut self.buf);
         self.iter.rewind(tokens);
     }
 }

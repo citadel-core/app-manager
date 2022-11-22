@@ -63,9 +63,22 @@ impl Positional {
     }
 }
 
+#[allow(clippy::from_over_into)]
 impl Into<u8> for Positional {
     fn into(self) -> u8 {
         self.as_num()
+    }
+}
+
+impl TryFrom<u8> for Positional {
+    type Error = ();
+
+    fn try_from(num: u8) -> Result<Positional, ()> {
+        if let Some(positional) = Positional::from_num(num) {
+            Ok(positional)
+        } else {
+            Err(())
+        }
     }
 }
 
@@ -108,8 +121,6 @@ pub enum Token {
     Equals,
     /// +
     Plus,
-    /// +=
-    PlusEquals,
     /// :
     Colon,
     /// @
@@ -204,7 +215,7 @@ impl Token {
             | Whitespace(_) => true,
 
             Bang | Star | Question | Backslash | SingleQuote | DoubleQuote | Backtick | Percent
-            | Dash | Equals | Plus | PlusEquals | Colon | At | Caret | Slash | Comma | CurlyOpen
+            | Dash | Equals | Plus | Colon | At | Caret | Slash | Comma | CurlyOpen
             | CurlyClose | SquareOpen | SquareClose | Dollar | Tilde | Pound | Name(_)
             | Literal(_) | ParamPositional(_) => false,
         }
@@ -236,7 +247,6 @@ impl Token {
             Dash => "-",
             Equals => "=",
             Plus => "+",
-            PlusEquals => "+=",
             Colon => ":",
             At => "@",
             Caret => "^",

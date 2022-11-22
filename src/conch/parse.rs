@@ -202,7 +202,7 @@ enum CompoundCmdKeyword {
 }
 
 /// Used to configure when `Parser::command_group` stops parsing commands.
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Default, Debug, PartialEq, Eq, Clone)]
 pub struct CommandGroupDelimiters<'a, 'b, 'c> {
     /// Any token which appears after a complete command separator (e.g. `;`, `&`, or a
     /// newline) will be considered a delimeter for the command group.
@@ -212,16 +212,6 @@ pub struct CommandGroupDelimiters<'a, 'b, 'c> {
     pub reserved_words: &'b [&'static str],
     /// Any token which matches this provided set will be considered a delimeter.
     pub exact_tokens: &'c [Token],
-}
-
-impl Default for CommandGroupDelimiters<'static, 'static, 'static> {
-    fn default() -> Self {
-        CommandGroupDelimiters {
-            reserved_tokens: &[],
-            reserved_words: &[],
-            exact_tokens: &[],
-        }
-    }
 }
 
 /// An `Iterator` adapter around a `Parser`.
@@ -702,7 +692,7 @@ impl<I: Iterator<Item = Token>, B: Builder> Parser<I, B> {
 
                 // Literals and can be statically checked if they have non-numeric characters
                 SimpleWordKind::Escaped(ref s) | SimpleWordKind::Literal(ref s) => {
-                    s.chars().all(|c| c.is_digit(10))
+                    s.chars().all(|c| c.is_ascii_digit())
                 }
 
                 // These could end up evaluating to a numeric,
@@ -721,7 +711,7 @@ impl<I: Iterator<Item = Token>, B: Builder> Parser<I, B> {
 
         fn as_num<C>(word: &ComplexWordKind<C>) -> Option<u16> {
             match *word {
-                Single(Simple(SimpleWordKind::Literal(ref s))) => u16::from_str_radix(s, 10).ok(),
+                Single(Simple(SimpleWordKind::Literal(ref s))) => s.parse::<u16>().ok(),
                 Single(_) => None,
                 Concat(ref fragments) => {
                     let mut buf = String::new();
@@ -733,7 +723,7 @@ impl<I: Iterator<Item = Token>, B: Builder> Parser<I, B> {
                         }
                     }
 
-                    u16::from_str_radix(&buf, 10).ok()
+                    buf.parse::<u16>().ok()
                 }
             }
         }
@@ -837,8 +827,6 @@ impl<I: Iterator<Item = Token>, B: Builder> Parser<I, B> {
     /// Note: this method expects that the caller provide a potential file
     /// descriptor for redirection.
     pub fn redirect_heredoc(&mut self, src_fd: Option<u16>) -> ParseResult<B::Redirect, B::Error> {
-        use std::iter::FromIterator;
-
         macro_rules! try_map {
             ($result:expr) => {
                 $result.map_err(|e: iter::UnmatchedError| ParseError::Unmatched(e.0, e.1))?
@@ -866,14 +854,10 @@ impl<I: Iterator<Item = Token>, B: Builder> Parser<I, B> {
         // parsing out a word as usual), so to maintain reasonable expectations, we'll
         // do the same here.
         let mut delim_tokens = Vec::new();
-        loop {
+        while let Some(t) = self.iter.peek() {
             // Normally parens are never part of words, but many
             // shells permit them to be part of a heredoc delimeter.
-            if let Some(t) = self.iter.peek() {
-                if t.is_word_delimiter() && t != &ParenOpen {
-                    break;
-                }
-            } else {
+            if t.is_word_delimiter() && t != &ParenOpen {
                 break;
             }
 
@@ -1159,7 +1143,7 @@ impl<I: Iterator<Item = Token>, B: Builder> Parser<I, B> {
                 Some(&CurlyOpen) | Some(&CurlyClose) | Some(&SquareOpen) | Some(&SquareClose)
                 | Some(&SingleQuote) | Some(&DoubleQuote) | Some(&Pound) | Some(&Star)
                 | Some(&Question) | Some(&Tilde) | Some(&Bang) | Some(&Backslash)
-                | Some(&Percent) | Some(&Dash) | Some(&Equals) | Some(&Plus) | Some(&PlusEquals) | Some(&Colon)
+                | Some(&Percent) | Some(&Dash) | Some(&Equals) | Some(&Plus) | Some(&Colon)
                 | Some(&At) | Some(&Caret) | Some(&Slash) | Some(&Comma) | Some(&Name(_))
                 | Some(&Literal(_)) => {}
 
@@ -1193,7 +1177,6 @@ impl<I: Iterator<Item = Token>, B: Builder> Parser<I, B> {
                 | tok @ Dash
                 | tok @ Equals
                 | tok @ Plus
-                | tok @ PlusEquals
                 | tok @ At
                 | tok @ Caret
                 | tok @ Slash
@@ -1316,11 +1299,8 @@ impl<I: Iterator<Item = Token>, B: Builder> Parser<I, B> {
             match self.iter.next() {
                 // Backslashes only escape a few tokens when double-quoted-type words
                 Some(Backslash) => {
-                    let special = match self.iter.peek() {
-                        Some(&Dollar) | Some(&Backtick) | Some(&DoubleQuote) | Some(&Backslash)
-                        | Some(&Newline) => true,
-                        _ => false,
-                    };
+                    let special = matches!(self.iter.peek(), Some(&Dollar) | Some(&Backtick) | Some(&DoubleQuote) | Some(&Backslash)
+                        | Some(&Newline));
 
                     if special || self.iter.peek() == delim_close.as_ref() {
                         store!(SimpleWordKind::Escaped(
@@ -1478,7 +1458,6 @@ impl<I: Iterator<Item = Token>, B: Builder> Parser<I, B> {
                     | Some(&Dash)
                     | Some(&Equals)
                     | Some(&Plus)
-                    | Some(&PlusEquals)
                     | Some(&Colon)
                     | Some(&At)
                     | Some(&Caret)
@@ -2062,13 +2041,13 @@ impl<I: Iterator<Item = Token>, B: Builder> Parser<I, B> {
 
         macro_rules! missing_in {
             () => {
-                |_| ParseError::IncompleteCmd(CASE, start_pos, IN, self.iter.pos());
+                |_| ParseError::IncompleteCmd(CASE, start_pos, IN, self.iter.pos())
             };
         }
 
         macro_rules! missing_esac {
             () => {
-                |_| ParseError::IncompleteCmd(CASE, start_pos, ESAC, self.iter.pos());
+                |_| ParseError::IncompleteCmd(CASE, start_pos, ESAC, self.iter.pos())
             };
         }
 
@@ -2358,11 +2337,7 @@ impl<I: Iterator<Item = Token>, B: Builder> Parser<I, B> {
         }
 
         let care_about_whitespace = tokens.iter().any(|tok| {
-            if let Whitespace(_) = *tok {
-                true
-            } else {
-                false
-            }
+            matches!(*tok, Whitespace(_))
         });
 
         // If the caller cares about whitespace as a reserved word we should
@@ -2853,7 +2828,7 @@ impl<I: Iterator<Item = Token>, B: Builder> Parser<I, B> {
             } else if s.starts_with('0') {
                 isize::from_str_radix(s, 8).ok()
             } else {
-                isize::from_str_radix(s, 10).ok()
+                s.parse::<isize>().ok()
             }
         } else {
             None

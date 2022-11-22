@@ -12,4 +12,4 @@ pub mod hosted_git;
 pub mod updates;
 pub mod utils;
 #[cfg(feature = "umbrel")]
-mod conch;
+pub mod conch;

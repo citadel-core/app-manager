@@ -58,13 +58,7 @@ impl<I: Iterator<Item = char>> Lexer<I> {
             '%' => Percent,
             '-' => Dash,
             '=' => Equals,
-            '+' => {
-                if self.next_is('=') {
-                    PlusEquals
-                } else {
-                    Plus
-                }
-            },
+            '+' => Plus,
             ':' => Colon,
             '@' => At,
             '^' => Caret,
@@ -205,7 +199,7 @@ impl<I: Iterator<Item = char>> Iterator for Lexer<I> {
         }
 
         fn is_digit(c: char) -> bool {
-            c.is_digit(10)
+            c.is_ascii_digit()
         }
 
         fn name_char(c: char) -> bool {
