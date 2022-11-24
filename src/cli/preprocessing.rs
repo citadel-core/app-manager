@@ -1,6 +1,6 @@
 use std::{collections::HashMap, io::Read, path::Path};
 
-use super::{tera, UserJson, umbrel::convert};
+use super::{tera, umbrel::convert, UserJson};
 
 pub fn preprocess_apps(citadel_root: &Path, app_dir: &Path) {
     let mut citadel_seed = None;
@@ -80,7 +80,10 @@ pub fn preprocess_apps(citadel_root: &Path, app_dir: &Path) {
                 let umbrel_app_yml = app.path().join("umbrel-app.yml");
                 if umbrel_app_yml.exists() {
                     if let Err(convert_error) = convert(&app.path()) {
-                        eprintln!("Error converting Umbrel app to Citadel app: {:?}", convert_error);
+                        eprintln!(
+                            "Error converting Umbrel app to Citadel app: {:?}",
+                            convert_error
+                        );
                         continue;
                     }
                 } else {

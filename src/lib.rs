@@ -1,6 +1,8 @@
 #[cfg(feature = "cli")]
 pub mod cli;
 pub mod composegenerator;
+#[cfg(feature = "umbrel")]
+pub mod conch;
 pub mod constants;
 #[cfg(feature = "dev-tools")]
 pub mod github;
@@ -11,5 +13,3 @@ pub mod hosted_git;
 #[cfg(feature = "dev-tools")]
 pub mod updates;
 pub mod utils;
-#[cfg(feature = "umbrel")]
-pub mod conch;

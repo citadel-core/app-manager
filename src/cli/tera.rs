@@ -14,7 +14,12 @@ use crate::{
     utils::flatten,
 };
 
-fn convert_app_yml(jinja_file: &Path, app_id: &str, services: &[String], citadel_seed: &str) -> Result<(), Error> {
+fn convert_app_yml(
+    jinja_file: &Path,
+    app_id: &str,
+    services: &[String],
+    citadel_seed: &str,
+) -> Result<(), Error> {
     let mut context = tera::Context::new();
     context.insert("services", services);
     context.insert("app_name", app_id);

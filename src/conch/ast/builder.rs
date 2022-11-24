@@ -9,7 +9,9 @@
 //! the `Builder` trait for your AST. Otherwise you can provide the `DefaultBuilder`
 //! struct to the parser if you wish to use the default AST implementation.
 
-use crate::conch::ast::{AndOr, DefaultArithmetic, DefaultParameter, RedirectOrCmdWord, RedirectOrEnvVar};
+use crate::conch::ast::{
+    AndOr, DefaultArithmetic, DefaultParameter, RedirectOrCmdWord, RedirectOrEnvVar,
+};
 
 mod default_builder;
 mod empty_builder;

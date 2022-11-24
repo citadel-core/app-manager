@@ -1299,8 +1299,14 @@ impl<I: Iterator<Item = Token>, B: Builder> Parser<I, B> {
             match self.iter.next() {
                 // Backslashes only escape a few tokens when double-quoted-type words
                 Some(Backslash) => {
-                    let special = matches!(self.iter.peek(), Some(&Dollar) | Some(&Backtick) | Some(&DoubleQuote) | Some(&Backslash)
-                        | Some(&Newline));
+                    let special = matches!(
+                        self.iter.peek(),
+                        Some(&Dollar)
+                            | Some(&Backtick)
+                            | Some(&DoubleQuote)
+                            | Some(&Backslash)
+                            | Some(&Newline)
+                    );
 
                     if special || self.iter.peek() == delim_close.as_ref() {
                         store!(SimpleWordKind::Escaped(
@@ -2336,9 +2342,7 @@ impl<I: Iterator<Item = Token>, B: Builder> Parser<I, B> {
             return None;
         }
 
-        let care_about_whitespace = tokens.iter().any(|tok| {
-            matches!(*tok, Whitespace(_))
-        });
+        let care_about_whitespace = tokens.iter().any(|tok| matches!(*tok, Whitespace(_)));
 
         // If the caller cares about whitespace as a reserved word we should
         // do a reserved word check without skipping any leading whitespace.
