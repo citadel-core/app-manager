@@ -1,7 +1,6 @@
-use crate::composegenerator::compose::types::ComposeSpecification;
 use std::{collections::HashMap, io::Read, path::Path};
 
-use super::{tera, UserJson};
+use super::{tera, UserJson, umbrel::convert};
 
 pub fn preprocess_apps(citadel_root: &Path, app_dir: &Path) {
     let mut citadel_seed = None;
@@ -80,23 +79,10 @@ pub fn preprocess_apps(citadel_root: &Path, app_dir: &Path) {
             {
                 let umbrel_app_yml = app.path().join("umbrel-app.yml");
                 if umbrel_app_yml.exists() {
-                    let compose_yml = std::fs::File::open(app.path().join("docker-compose.yml"))
-                        .expect("Error opening docker-compose.yml!");
-                    let umbrel_app_yml =
-                        std::fs::File::open(umbrel_app_yml).expect("Error opening umbrel-app.yml!");
-                    let umbrel_app_yml: crate::composegenerator::umbrel::types::Metadata =
-                        serde_yaml::from_reader(umbrel_app_yml)
-                            .expect("Error parsing umbrel-app.yml!");
-                    let compose_yml_parsed: ComposeSpecification =
-                        serde_yaml::from_reader(compose_yml)
-                            .expect("Error parsing docker-compose.yml!");
-                    let result = crate::composegenerator::umbrel::convert::convert_compose(
-                        compose_yml_parsed,
-                        umbrel_app_yml,
-                    );
-                    let writer =
-                        std::fs::File::create(&app_yml).expect("Error creating output file");
-                    serde_yaml::to_writer(writer, &result).expect("Error saving file!");
+                    if let Err(convert_error) = convert(&app.path()) {
+                        eprintln!("Error converting Umbrel app to Citadel app: {:?}", convert_error);
+                        continue;
+                    }
                 } else {
                     eprintln!("Warning: App {} does not have an app.yml file!", app_id);
                     continue;

@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
 
-use crate::composegenerator::compose::types::{Command, EnvVars, StringOrIntOrBool};
+use crate::composegenerator::compose::types::{Command, EnvVars, StringOrIntOrBool, ComposeSpecification};
 use crate::composegenerator::types::Permissions;
 use crate::composegenerator::umbrel::types::Metadata;
 use crate::composegenerator::v4::types::{
@@ -77,7 +77,7 @@ fn replace_env_vars(mut string: String) -> String {
 }
 
 pub fn convert_compose(
-    compose: crate::composegenerator::compose::types::ComposeSpecification,
+    compose: ComposeSpecification,
     metadata: Metadata,
 ) -> AppYml {
     let services = compose.services.unwrap();

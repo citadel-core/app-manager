@@ -36,9 +36,7 @@ enum SubCommand {
     #[cfg(feature = "umbrel")]
     UmbrelToCitadel {
         /// The app directory to run this on
-        app: String,
-        /// The output file to save the result to
-        output: String,
+        app_dir: String,
     },
     /// Validate a Citadel app.yml file and check if it could be parsed & converted
     #[cfg(feature = "dev-tools")]
@@ -153,22 +151,9 @@ fn main() {
             }
         },
         #[cfg(feature = "umbrel")]
-        SubCommand::UmbrelToCitadel { app, output } => {
-            let app_dir = Path::new(&app);
-            let compose_yml = std::fs::File::open(app_dir.join("docker-compose.yml"))
-                .expect("Error opening docker-compose.yml!");
-            let app_yml = std::fs::File::open(app_dir.join("umbrel-app.yml"))
-                .expect("Error opening umbrel-app.yml!");
-            let app_yml_parsed: citadel_apps::composegenerator::umbrel::types::Metadata =
-                serde_yaml::from_reader(app_yml).expect("Error parsing umbrel-app.yml!");
-            let compose_yml_parsed: citadel_apps::composegenerator::compose::types::ComposeSpecification
-             = serde_yaml::from_reader(compose_yml).expect("Error parsing docker-compose.yml!");
-            let result = citadel_apps::composegenerator::umbrel::convert::convert_compose(
-                compose_yml_parsed,
-                app_yml_parsed,
-            );
-            let writer = std::fs::File::create(output).expect("Error creating output file");
-            serde_yaml::to_writer(writer, &result).expect("Error saving file!");
+        SubCommand::UmbrelToCitadel { app_dir } => {
+            let app_dir = Path::new(&app_dir);
+            cli::umbrel::convert(app_dir).expect("Conversion failed!");
         }
         #[cfg(feature = "dev-tools")]
         SubCommand::Validate { app, app_name } => {
