@@ -1,13 +1,16 @@
 use std::collections::{BTreeMap, HashMap};
 
+use tracing::warn;
+
 use crate::composegenerator::compose::types::{
     Command, ComposeSpecification, EnvVars, StringOrIntOrBool,
 };
 use crate::composegenerator::types::Permissions;
 use crate::composegenerator::umbrel::types::Metadata;
 use crate::composegenerator::v4::types::{
-    AppYml, Container, InputMetadata as CitadelMetadata, Mounts,
+    AppYml, Container, InputMetadata as CitadelMetadata, Mounts, PortsDefinition,
 };
+use crate::utils::find_env_vars;
 use crate::{bmap, map};
 
 pub fn convert_metadata(metadata: Metadata) -> CitadelMetadata {
@@ -60,6 +63,21 @@ fn replace_env_vars(mut string: String) -> String {
     if string.contains("APP_BITCOIN_NETWORK") {
         string = string.replace("APP_BITCOIN_NETWORK", "BITCOIN_NETWORK");
     }
+    if string.contains("APP_BITCOIN_RPC_PORT") {
+        string = string.replace("APP_BITCOIN_RPC_PORT", "BITCOIN_RPC_PORT");
+    }
+    if string.contains("APP_BITCOIN_P2P_PORT") {
+        string = string.replace("APP_BITCOIN_P2P_PORT", "BITCOIN_P2P_PORT");
+    }
+    if string.contains("APP_BITCOIN_RPC_USER") {
+        string = string.replace("APP_BITCOIN_RPC_USER", "BITCOIN_RPC_USER");
+    }
+    if string.contains("APP_BITCOIN_RPC_PASS") {
+        string = string.replace("APP_BITCOIN_RPC_PASS", "BITCOIN_RPC_PASS");
+    }
+    if string.contains("APP_BITCOIN_NODE_IP") {
+        string = string.replace("APP_BITCOIN_NODE_IP", "BITCOIN_IP");
+    }
     if string.contains("APP_LIGHTNING_NODE_GRPC_PORT") {
         string = string.replace("APP_LIGHTNING_NODE_GRPC_PORT", "LND_GRPC_PORT");
     }
@@ -70,15 +88,19 @@ fn replace_env_vars(mut string: String) -> String {
         string = string.replace("APP_LIGHTNING_NODE_IP", "LND_IP");
     }
     if string.contains("APP_ELECTRS_NODE_IP") {
-        string = string.replace("APP_ELECTRS_NODE_IP", "ELECTRUM_IP");
+        string = string.replace("APP_ELECTRS_NODE_IP", "APP_ELECTRUM_IP");
     }
     if string.contains("APP_ELECTRS_NODE_PORT") {
-        string = string.replace("APP_ELECTRS_NODE_PORT", "ELECTRUM_PORT");
+        string = string.replace("APP_ELECTRS_NODE_PORT", "APP_ELECTRUM_PORT");
     }
     string
 }
 
-pub fn convert_compose(compose: ComposeSpecification, metadata: Metadata) -> AppYml {
+pub fn convert_compose(
+    compose: ComposeSpecification,
+    metadata: Metadata,
+    env_vars: &HashMap<String, String>,
+) -> AppYml {
     let services = compose.services.unwrap();
     let mut result_services: HashMap<String, Container> = HashMap::new();
     let has_main = services.contains_key("main");
@@ -157,7 +179,7 @@ pub fn convert_compose(compose: ComposeSpecification, metadata: Metadata) -> App
         for (key, value) in original_env {
             let new_value = match value {
                 StringOrIntOrBool::String(str) => {
-                    let mut new_value = replace_env_vars(str);
+                    let mut new_value = replace_env_vars(str.clone());
                     // If the APP_PASSWORD is also used, there could be a conflict otherwise
                     // For apps which don't use APP_PASSWORD, this can be reverted
                     if new_value.contains("APP_SEED") && metadata.deterministic_password {
@@ -165,6 +187,14 @@ pub fn convert_compose(compose: ComposeSpecification, metadata: Metadata) -> App
                     }
                     if new_value.contains("APP_PASSWORD") {
                         new_value = new_value.replace("APP_PASSWORD", "APP_SEED");
+                    }
+                    let env_vars_in_str = find_env_vars(&str);
+                    for env_var in env_vars_in_str {
+                        if let Some(env_var_value) = env_vars.get(env_var) {
+                            new_value = new_value
+                                .replace(&format!("${}", env_var), env_var_value)
+                                .replace(&format!("${{{}}}", env_var), env_var_value);
+                        }
                     }
                     StringOrIntOrBool::String(new_value)
                 }
@@ -214,6 +244,73 @@ pub fn convert_compose(compose: ComposeSpecification, metadata: Metadata) -> App
         if service_def.network_mode.is_some() {
             deps.push("network".to_string());
         }
+        let mut required_tcp_ports: HashMap<u16, u16> = HashMap::new();
+        let mut required_udp_ports: HashMap<u16, u16> = HashMap::new();
+        let mut main_port = metadata.port;
+        if service_def.ports.len() != 1 {
+            for port in service_def.ports {
+                let split = port.split(':').collect::<Vec<&str>>();
+                if split.len() != 2 {
+                    continue;
+                }
+                let mut host_port = split[0];
+                let container_port = split[1].split('/').collect::<Vec<&str>>();
+
+                // The first part is definitely the container port, the secon part is either a protocol or empty
+                // Empty means tcp
+                let mut real_container_port = container_port[0];
+                let protocol = if container_port.len() == 1 {
+                    "tcp"
+                } else {
+                    container_port[1]
+                };
+                let host_env_vars = find_env_vars(host_port);
+                let container_env_vars = find_env_vars(real_container_port);
+                if container_env_vars.len() == 2 {
+                    warn!("Found two env vars in container port, this is not supported");
+                    continue;
+                }
+                if container_env_vars.len() == 1
+                    && container_env_vars[0]
+                        == format!("APP_{}_PORT", metadata.id.to_uppercase().replace('-', "_"))
+                {
+                    let real_main_port = env_vars.get(container_env_vars[0]).unwrap();
+                    main_port = real_main_port.parse::<u16>().unwrap();
+                    continue;
+                } else if container_env_vars.len() == 1 {
+                    #[allow(unused_assignments)]
+                    if env_vars.contains_key(container_env_vars[0]) {
+                        let real_port = env_vars.get(container_env_vars[0]).unwrap();
+                        real_container_port = real_port;
+                        continue;
+                    }
+                }
+                if host_env_vars.len() == 1
+                    && host_env_vars[0]
+                        != format!("APP_{}_PORT", metadata.id.to_uppercase().replace('-', "_"))
+                {
+                    #[allow(unused_assignments)]
+                    if env_vars.contains_key(host_env_vars[0]) {
+                        let real_port = env_vars.get(host_env_vars[0]).unwrap();
+                        host_port = real_port;
+                        continue;
+                    }
+                }
+                if protocol == "tcp" {
+                    required_tcp_ports.insert(
+                        host_port.parse::<u16>().unwrap(),
+                        real_container_port.parse::<u16>().unwrap(),
+                    );
+                } else if protocol == "udp" {
+                    required_udp_ports.insert(
+                        host_port.parse::<u16>().unwrap(),
+                        real_container_port.parse::<u16>().unwrap(),
+                    );
+                } else {
+                    unreachable!();
+                }
+            }
+        }
         let new_service = Container {
             image: service_def.image.unwrap(),
             user: service_def.user,
@@ -229,12 +326,29 @@ pub fn convert_compose(compose: ComposeSpecification, metadata: Metadata) -> App
             command: new_cmd,
             environment: env,
             port: if service_name == "main" || service_name == "web" {
-                Some(metadata.port)
+                Some(main_port)
             } else {
                 None
             },
             port_priority: None,
-            required_ports: None,
+            required_ports: if required_udp_ports.is_empty() && required_tcp_ports.is_empty() {
+                None
+            } else if required_udp_ports.is_empty() {
+                Some(PortsDefinition {
+                    tcp: Some(required_tcp_ports),
+                    udp: None,
+                })
+            } else if required_tcp_ports.is_empty() {
+                Some(PortsDefinition {
+                    tcp: None,
+                    udp: Some(required_udp_ports),
+                })
+            } else {
+                Some(PortsDefinition {
+                    tcp: Some(required_tcp_ports),
+                    udp: Some(required_udp_ports),
+                })
+            },
             mounts,
             assign_fixed_ip: if service_def.networks.is_some() {
                 None

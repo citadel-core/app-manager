@@ -408,7 +408,7 @@ pub struct SimpleCommand<V, W, R> {
     /// Redirections or environment variables that occur before any command
     /// in the order they were parsed.
     pub redirects_or_env_vars: Vec<RedirectOrEnvVar<R, V, W>>,
-    /// Redirections or command name/argumetns in the order they were parsed.
+    /// Redirections or command name/arguments in the order they were parsed.
     pub redirects_or_cmd_words: Vec<RedirectOrCmdWord<R, W>>,
 }
 
