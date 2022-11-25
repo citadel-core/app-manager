@@ -24,7 +24,10 @@ skipped = len(ignoredApps)
 
 for folder in os.listdir("umbrel-apps"):
     # If it's not a directory or a .git folder, skip it
-    if not os.path.isdir(os.path.join("umbrel-apps", folder)) or folder == ".git" or folder in ignoredApps:
+    if not os.path.isdir(os.path.join("umbrel-apps", folder)) or folder == ".git":
+        continue
+    if folder in ignoredApps:
+        print(f"\033[90m[SKIPPED]\033[0m {folder}")
         continue
     # Delete app.yml if it exists
     if os.path.exists(f"umbrel-apps/{folder}/app.yml"):
@@ -40,7 +43,7 @@ for folder in os.listdir("umbrel-apps"):
                 "umbrel-to-citadel",
                 f"umbrel-apps/{folder}",
             ],
-            #capture_output=True,
+            capture_output=True,
             text=True,
         )
     except subprocess.CalledProcessError as e:

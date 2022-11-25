@@ -59,7 +59,7 @@ pub fn convert_metadata(metadata: Metadata) -> CitadelMetadata {
     }
 }
 
-fn replace_env_vars(mut string: String) -> String {
+fn replace_env_vars(mut string: String, env_vars: &HashMap<String, String>) -> String {
     if string.contains("APP_BITCOIN_NETWORK") {
         string = string.replace("APP_BITCOIN_NETWORK", "BITCOIN_NETWORK");
     }
@@ -92,6 +92,15 @@ fn replace_env_vars(mut string: String) -> String {
     }
     if string.contains("APP_ELECTRS_NODE_PORT") {
         string = string.replace("APP_ELECTRS_NODE_PORT", "APP_ELECTRUM_PORT");
+    }
+    let str_clone = string.clone();
+    let env_vars_in_str = find_env_vars(&str_clone);
+    for env_var in env_vars_in_str {
+        if let Some(env_var_value) = env_vars.get(env_var) {
+            string = string
+                .replace(&format!("${}", env_var), env_var_value)
+                .replace(&format!("${{{}}}", env_var), env_var_value);
+        }
     }
     string
 }
@@ -179,7 +188,7 @@ pub fn convert_compose(
         for (key, value) in original_env {
             let new_value = match value {
                 StringOrIntOrBool::String(str) => {
-                    let mut new_value = replace_env_vars(str.clone());
+                    let mut new_value = replace_env_vars(str.clone(), env_vars);
                     // If the APP_PASSWORD is also used, there could be a conflict otherwise
                     // For apps which don't use APP_PASSWORD, this can be reverted
                     if new_value.contains("APP_SEED") && metadata.deterministic_password {
@@ -187,14 +196,6 @@ pub fn convert_compose(
                     }
                     if new_value.contains("APP_PASSWORD") {
                         new_value = new_value.replace("APP_PASSWORD", "APP_SEED");
-                    }
-                    let env_vars_in_str = find_env_vars(&str);
-                    for env_var in env_vars_in_str {
-                        if let Some(env_var_value) = env_vars.get(env_var) {
-                            new_value = new_value
-                                .replace(&format!("${}", env_var), env_var_value)
-                                .replace(&format!("${{{}}}", env_var), env_var_value);
-                        }
                     }
                     StringOrIntOrBool::String(new_value)
                 }
@@ -206,7 +207,7 @@ pub fn convert_compose(
         if let Some(command) = service_def.command {
             match command {
                 Command::SimpleCommand(mut command) => {
-                    command = replace_env_vars(command);
+                    command = replace_env_vars(command, env_vars);
                     if command.contains("APP_PASSWORD") {
                         // If the APP_SEED is also used, use APP_SEED_2 instead so the seed and the password are different
                         if command.contains("APP_SEED") {
@@ -219,7 +220,7 @@ pub fn convert_compose(
                 Command::ArrayCommand(values) => {
                     let mut result = Vec::<String>::new();
                     for mut argument in values {
-                        argument = replace_env_vars(argument);
+                        argument = replace_env_vars(argument, env_vars);
                         // If the APP_PASSWORD is also used, there could be a conflict otherwise
                         // For apps which don't use APP_PASSWORD, this can be reverted
                         if argument.contains("APP_SEED") {
