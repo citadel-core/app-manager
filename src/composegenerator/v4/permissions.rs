@@ -38,13 +38,17 @@ pub fn is_allowed_by_permissions(app_id: &str, env_var: &str, permissions: &[Str
         return permissions.contains(&"bitcoind".to_string())
             && BITCOIN_ENV_VARS.contains(&env_var);
     } else if env_var.starts_with("LND") {
+        if env_var == "LND_IP" {
+            tracing::warn!("The environment variable LND_IP is deprecated. Please use APP_LND_SERVICE_IP instead");
+        }
         return permissions.contains(&"lnd".to_string()) && LND_ENV_VARS.contains(&env_var);
     } else if env_var.starts_with("ELECTRUM") {
         tracing::warn!("Environment variables starting with ELECTRUM_ are deprecated. Please use APP_ELECTRUM_* instead");
         return permissions.contains(&"electrum".to_string())
             && ELECTRUM_ENV_VARS.contains(&env_var);
     } else if env_var.starts_with("C_LIGHTNING") {
-        return permissions.contains(&"c-lightning".to_string())
+        tracing::warn!("Environment variables starting with C_LIGHTNING_ are deprecated. Please use APP_CORE_LN_* instead");
+        return (permissions.contains(&"c-lightning".to_string()) || permissions.contains(&"core-ln".to_string()))
             && C_LIGHTNING_ENV_VARS.contains(&env_var);
     } else if env_var.starts_with("APP_HIDDEN_SERVICE_") || env_var.starts_with("APP_SEED") {
         return true;
@@ -127,5 +131,11 @@ mod test {
             "APP_ELECTRUM_IP",
             &["electrum".to_string()]
         ));
+    }
+
+    #[test]
+    fn allow_cln_and_lnd_data_dirs() {
+        assert!(is_allowed_by_permissions("example-app", "APP_CORE_LN_DATA_DIR", &["core-ln".to_string()]));
+        assert!(is_allowed_by_permissions("example-app", "APP_LND_DATA_DIR", &["lnd".to_string()]));
     }
 }

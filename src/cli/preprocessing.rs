@@ -43,7 +43,7 @@ pub fn preprocess_apps(citadel_root: &Path, app_dir: &Path) {
             services = user_json.installed_apps;
         }
     }
-    services.append(&mut vec!["bitcoind".to_string(), "lnd".to_string()]);
+    services.append(&mut vec!["bitcoind".to_string()]);
 
     // Collect the env vars into an hashmap, logging errors
     let env_vars: HashMap<String, String> = env_vars

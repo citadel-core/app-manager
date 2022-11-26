@@ -69,7 +69,7 @@ pub fn convert_dir(citadel_root: &str) {
             services = user_json.installed_apps;
         }
     }
-    services.append(&mut vec!["bitcoind".to_string(), "lnd".to_string()]);
+    services.append(&mut vec!["bitcoind".to_string()]);
 
     let mut citadel_seed = None;
 
