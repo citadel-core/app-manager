@@ -689,8 +689,7 @@ mod test {
                         }),
                         ..Default::default()
                     }
-                }),
-                ..Default::default()
+                })
 
             },
             metadata: OutputMetadata {

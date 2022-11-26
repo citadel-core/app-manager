@@ -144,7 +144,10 @@ pub fn convert_compose(
                             tracing::error!("Encountered invalid env var: {}", val);
                             continue;
                         };
-                        map.insert(key.to_string(), StringOrIntOrBool::String(value.to_string()));
+                        map.insert(
+                            key.to_string(),
+                            StringOrIntOrBool::String(value.to_string()),
+                        );
                     }
                     map
                 }

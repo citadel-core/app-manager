@@ -72,6 +72,10 @@ enum SubCommand {
         /// The Citadel root directory
         citadel_root: String,
     },
+    DownloadNew {
+        /// The Citadel root directory
+        citadel_root: String,
+    },
     CheckUpdates {
         /// The Citadel root directory
         citadel_root: String,
@@ -82,7 +86,7 @@ enum SubCommand {
         /// The Citadel root directory
         #[clap(long)]
         citadel_root: String,
-    }
+    },
 }
 
 /// Manage apps on Citadel
@@ -249,15 +253,18 @@ fn main() {
                         .expect("Error saving app definition!");
                 }
             }
-        },
+        }
         SubCommand::DownloadApps { citadel_root } => {
             cli::repos::download_apps(&citadel_root).expect("Failed to download apps");
-        },
+        }
+        SubCommand::DownloadNew { citadel_root } => {
+            cli::repos::download_new_apps(&citadel_root).expect("Failed to download apps");
+        }
         SubCommand::CheckUpdates { citadel_root } => {
             cli::repos::list_updates(&citadel_root).expect("Failed to check for updates");
-        },
+        }
         SubCommand::Download { citadel_root, app } => {
             cli::repos::download_app(&citadel_root, &app).expect("Failed to download app");
-        },
+        }
     }
 }

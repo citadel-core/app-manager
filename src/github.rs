@@ -1,5 +1,5 @@
-use semver::Version;
 use anyhow::{bail, Result};
+use semver::Version;
 
 pub async fn check_updates(
     owner: &String,
@@ -8,7 +8,12 @@ pub async fn check_updates(
     include_pre: bool,
 ) -> Result<String> {
     let octocrab = octocrab::instance();
-    let tags = octocrab.repos(owner, repo).list_tags().send().await?.take_items();
+    let tags = octocrab
+        .repos(owner, repo)
+        .list_tags()
+        .send()
+        .await?
+        .take_items();
     for tag in tags {
         let tag = tag.name;
         // Remove the v prefix if it exists

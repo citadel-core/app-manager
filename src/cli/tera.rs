@@ -14,13 +14,39 @@ use crate::{
     utils::flatten,
 };
 
-fn convert_app_yml(jinja_file: &Path, app_id: &str, services: &[String]) -> Result<(), Error> {
+fn convert_app_yml(jinja_file: &Path, app_id: &str, services: &[String], citadel_seed: &str) -> Result<(), Error> {
     let mut context = tera::Context::new();
     context.insert("services", services);
     context.insert("app_name", app_id);
     let mut tmpl = String::new();
     std::fs::File::open(jinja_file)?.read_to_string(&mut tmpl)?;
-    let tmpl_result = Tera::one_off(tmpl.as_str(), &context, false);
+    let mut tera = Tera::default();
+    let citadel_seed = citadel_seed.to_string();
+    let app_id = app_id.to_string();
+    tera.register_function(
+        "derive_entropy",
+        move |args: &HashMap<String, serde_json::Value>| -> Result<tera::Value, tera::Error> {
+            let identifier = if args.contains_key("id") {
+                args.get("id")
+            } else {
+                args.get("identifier")
+            };
+            let Some(identifier) = identifier else {
+                return Err(tera::Error::msg("Missing identifier"));
+            };
+
+            let Some(identifier) = identifier.as_str() else {
+                return Err(tera::Error::msg("Identifier must be a string"));
+            };
+
+            Ok(tera::to_value(derive_entropy(
+                &citadel_seed,
+                format!("app-{}-{}", app_id.replace('-', "_"), identifier).as_str(),
+            ))
+            .expect("Failed to serialize value"))
+        },
+    );
+    let tmpl_result = tera.render_str(tmpl.as_str(), &context);
     if let Err(e) = tmpl_result {
         eprintln!("Error processing template: {}", e);
         return Err(Error::new(
@@ -65,7 +91,33 @@ fn convert_config_template(
 
     let mut tmpl = String::new();
     std::fs::File::open(jinja_file)?.read_to_string(&mut tmpl)?;
-    let tmpl_result = Tera::one_off(tmpl.as_str(), &context, false);
+    let mut tera = Tera::default();
+    let citadel_seed = citadel_seed.to_string();
+    let app_id = app_id.to_string();
+    tera.register_function(
+        "derive_entropy",
+        move |args: &HashMap<String, serde_json::Value>| -> Result<tera::Value, tera::Error> {
+            let identifier = if args.contains_key("id") {
+                args.get("id")
+            } else {
+                args.get("identifier")
+            };
+            let Some(identifier) = identifier else {
+                return Err(tera::Error::msg("Missing identifier"));
+            };
+
+            let Some(identifier) = identifier.as_str() else {
+                return Err(tera::Error::msg("Identifier must be a string"));
+            };
+
+            Ok(tera::to_value(derive_entropy(
+                &citadel_seed,
+                format!("app-{}-{}", app_id.replace('-', "_"), identifier).as_str(),
+            ))
+            .expect("Failed to serialize value"))
+        },
+    );
+    let tmpl_result = tera.render_str(tmpl.as_str(), &context);
     if let Err(e) = tmpl_result {
         eprintln!("Error processing template: {}", e);
         return Err(Error::new(
@@ -84,11 +136,12 @@ pub fn convert_app_jinja_files(
     env_vars: &Option<HashMap<String, String>>,
 ) -> Result<(), Error> {
     let app_yml_jinja = app_path.to_path_buf().join("app.yml.jinja");
-    if app_yml_jinja.exists() {
+    if app_yml_jinja.exists() && citadel_seed.is_some() {
         convert_app_yml(
             &app_yml_jinja,
             app_path.file_name().unwrap().to_str().unwrap(),
             services,
+            citadel_seed.as_ref().unwrap(),
         )?;
     }
 

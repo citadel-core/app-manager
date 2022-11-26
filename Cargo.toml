@@ -18,7 +18,7 @@ anyhow = { version = "1.0.66", features = ["backtrace"] }
 tracing = "0.1.37"
 # Optional dependencies
 schemars = { version = "0.8", optional = true }
-tokio  = { version = "1.21.2", optional = true, features = ["net", "rt"] }
+tokio  = { version = "1.22.0", optional = true, features = ["net", "rt"] }
 bollard = { version = "0.13.0", optional = true }
 futures-util = { version = "0.3.25", optional = true }
 octocrab = { version = "0.17.0", optional = true }
@@ -34,6 +34,7 @@ git2 = { version = "0.15.0", optional = true }
 fs_extra = { version = "1.2.0", optional = true }
 tracing-subscriber = { version = "0.3.16", optional = true }
 libz-sys = { version = "1.1.0", default-features = false, features = ["libc", "static"], optional = true }
+void = { version = "1.0.2", optional = true }
 
 [profile.release]
 strip = true
@@ -46,7 +47,7 @@ required-features = ["cli"]
 
 [features]
 cli = ["dep:clap", "dep:tracing-subscriber", "dep:dotenv", "dep:tera", "dep:tempdir", "dep:git2", "dep:semver", "dep:fs_extra", "dep:libz-sys"]
-umbrel = []
+umbrel = ["dep:void"]
 dev-tools = ["umbrel", "schema", "docker", "dep:octocrab", "dep:semver", "dep:gitlab", "dep:url", "dep:tokio"]
 schema = ["dep:schemars"]
 docker = ["dep:bollard", "dep:futures-util"]
