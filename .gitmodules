@@ -1,0 +1,9 @@
+[submodule "citadel"]
+	path = citadel
+	url = https://github.com/citadel-core/core
+[submodule "citadel-apps"]
+	path = citadel-apps
+	url = https://github.com/citadel-core/apps
+[submodule "umbrel-apps"]
+	path = umbrel-apps
+	url = https://github.com/getumbrel/umbrel-apps

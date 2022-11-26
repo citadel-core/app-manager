@@ -19,8 +19,18 @@ ignoredApps = [
 ]
 
 passed = 0
+passedUnique = 0
 failed = 0
+failedUnique = 0
 skipped = len(ignoredApps)
+
+subprocess.run(
+    [
+        "cargo",
+        "build",
+        "--all-features"
+    ],
+)
 
 for folder in os.listdir("umbrel-apps"):
     # If it's not a directory or a .git folder, skip it
@@ -49,16 +59,25 @@ for folder in os.listdir("umbrel-apps"):
     except subprocess.CalledProcessError as e:
         print(f"\033[31m[FAILED]\033[0m {folder}")
         failed += 1
+        # If citadel-apps/<app-name> doesn't exists, increase failedUnique
+        if not os.path.exists(f"citadel-apps/v4/{folder}"):
+            failedUnique += 1
         print(e.stderr)
         continue
     if not os.path.exists(f"umbrel-apps/{folder}/app.yml"):
         print(f"\033[31m[FAILED]\033[0m {folder}")
         failed += 1
+        if not os.path.exists(f"citadel-apps/v4/{folder}"):
+            failedUnique += 1
         continue
     print(f"\033[32m[PASSED]\033[0m {folder}")
     passed += 1
+    # If citadel-apps/<app-name> doesn't exists, increase passedUnique
+    if not os.path.exists(f"citadel-apps/v4/{folder}"):
+        passedUnique += 1
+
 
 total = passed + failed + skipped
-print(f"Passed: {passed}/{total} ({round(passed/total*100, 2)}%)")
-print(f"Failed: {failed}/{total} ({round(failed/total*100, 2)}%)")
+print(f"Passed: {passed}/{total} ({round(passed/total*100, 2)}%) ({passedUnique} not available on Citadel)")
+print(f"Failed: {failed}/{total} ({round(failed/total*100, 2)}%) ({failedUnique} not available on Citadel)")
 print(f"Skipped: {skipped}/{total} ({round(skipped/total*100, 2)}%)")
