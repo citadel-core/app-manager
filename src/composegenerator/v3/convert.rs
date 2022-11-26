@@ -1,6 +1,6 @@
 use super::types::Schema as AppYmlV3;
 use crate::composegenerator::types::ResultYml;
-use crate::composegenerator::v4::types::PortMapElement;
+use crate::composegenerator::v4::types::{PortMapElement, StringOrMap};
 use crate::composegenerator::v4::{
     convert::convert_config as convert_config_v4, types as types_v4,
 };
@@ -76,34 +76,27 @@ pub fn v3_to_v4(app: AppYmlV3, installed_services: &Option<&Vec<String>>) -> typ
         if container.no_network.unwrap_or(false) {
             assign_fixed_ip = Some(false);
         }
-        let mut mounts = types_v4::Mounts {
-            bitcoin: None,
-            lnd: None,
-            c_lightning: None,
-            data: None,
-        };
+        let mut mounts = HashMap::new();
         let requires = container.requires.unwrap_or_default();
         let old_mounts = container.mounts.unwrap_or_default();
         if deps.contains(&"lnd".to_string()) && !requires.contains(&"c-lightning".to_string()) {
-            mounts.lnd = Some(old_mounts.lnd.unwrap_or_else(|| "/lnd".into()));
+            mounts.insert("lnd".to_string(), StringOrMap::String(old_mounts.lnd.unwrap_or_else(|| "/lnd".into())));
         }
         if deps.contains(&"c-lightning".to_string()) && !requires.contains(&"lnd".to_string()) {
-            mounts.c_lightning = Some(
-                old_mounts
+            mounts.insert("core-ln".to_string(),
+            StringOrMap::String(old_mounts
                     .c_lightning
-                    .unwrap_or_else(|| "/c-lightning".into()),
+                    .unwrap_or_else(|| "/c-lightning".into()))
             );
         }
         if deps.contains(&"bitcoin".to_string()) {
-            mounts.bitcoin = Some(old_mounts.bitcoin.unwrap_or_else(|| "/bitcoin".into()));
+            mounts.insert("bitcoin".to_string(), StringOrMap::String(old_mounts.bitcoin.unwrap_or_else(|| "/bitcoin".into())));
         }
         let data_mounts = container.data.unwrap_or_default();
+        let mut new_data_mounts = HashMap::<String, String>::with_capacity(
+            data_mounts.capacity(),
+        );
         for value in &data_mounts {
-            if mounts.data.is_none() {
-                mounts.data = Some(HashMap::<String, String>::with_capacity(
-                    data_mounts.capacity(),
-                ))
-            }
             let mut split = value.split(':');
             let Some(key) = split.next() else {
                 tracing::error!("Encountered invalid mount: {}", value);
@@ -113,11 +106,11 @@ pub fn v3_to_v4(app: AppYmlV3, installed_services: &Option<&Vec<String>>) -> typ
                 tracing::error!("Encountered invalid env var: {}", value);
                 continue;
             };
-            mounts
-                .data
-                .as_mut()
-                .unwrap()
+            new_data_mounts
                 .insert(key.to_string(), value.to_string());
+        }
+        if !new_data_mounts.is_empty() {
+            mounts.insert("data".to_string(), StringOrMap::Map(new_data_mounts));
         }
 
         services.insert(

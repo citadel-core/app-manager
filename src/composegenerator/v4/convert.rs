@@ -1,6 +1,6 @@
 use super::{
     permissions, types,
-    types::PortMapElement,
+    types::{PortMapElement, StringOrMap},
     utils::{get_host_port, get_main_container, validate_cmd},
 };
 use crate::{
@@ -265,50 +265,52 @@ fn convert_volumes(
     for (service_name, service) in services {
         let original_definition = containers.get(service_name).unwrap();
         if let Some(mounts) = &original_definition.mounts {
-            if let Some(data_mounts) = &mounts.data {
-                for (host_path, container_path) in data_mounts {
-                    if host_path.contains("..") {
-                        bail!("A data dir to mount is not allowed to contain '..'");
+            if let Some(data_mounts) = &mounts.get("data") {
+                if let StringOrMap::Map(data_mounts) = data_mounts {
+                    for (host_path, container_path) in data_mounts {
+                        if host_path.contains("..") {
+                            bail!("A data dir to mount is not allowed to contain '..'");
+                        }
+                        let mount_host_dir: String = if !host_path.starts_with('/') {
+                            "/".to_owned() + host_path
+                        } else {
+                            host_path.clone()
+                        };
+                        service.volumes.push(format!(
+                            "${{APP_DATA_DIR}}{}:{}",
+                            mount_host_dir, container_path
+                        ));
                     }
-                    let mount_host_dir: String = if !host_path.starts_with('/') {
-                        "/".to_owned() + host_path
-                    } else {
-                        host_path.clone()
-                    };
-                    service.volumes.push(format!(
-                        "${{APP_DATA_DIR}}{}:{}",
-                        mount_host_dir, container_path
-                    ));
+                } else {
+                    bail!("Data mounts must be a map");
                 }
             }
 
-            if let Some(bitcoin_mount) = &mounts.bitcoin {
+            if let Some(bitcoin_mount) = mounts.get("bitcoin") {
                 if !permissions.contains(&"bitcoind".to_string()) {
                     bail!("bitcoin mount defined by container without Bitcoin permissions",);
                 }
-                service
-                    .volumes
-                    .push(format!("${{BITCOIN_DATA_DIR}}:{}", bitcoin_mount));
+                if let StringOrMap::String(bitcoin_path) = bitcoin_mount {
+                    service
+                        .volumes
+                        .push(format!("${{BITCOIN_DATA_DIR}}:{}", bitcoin_path));
+                } else {
+                    bail!("bitcoin mount defined as map, but only string is supported");
+                }
             }
 
-            if let Some(lnd_mount) = &mounts.lnd {
-                if !permissions.contains(&"lnd".to_string()) {
-                    bail!("lnd mount defined by container without LND permissions");
+            for (key, value) in mounts {
+                if key == "data" || key == "bitcoin" {
+                    continue;
                 }
-                service
-                    .volumes
-                    .push(format!("${{LND_DATA_DIR}}:{}", lnd_mount));
-            }
-
-            if let Some(c_lightning_mount) = &mounts.c_lightning {
-                if !permissions.contains(&"c-lightning".to_string()) && !permissions.contains(&"core-ln".to_string()) {
-                    bail!(
-                        "c-lightning mount defined by container without Core Lightning permissions",
-                    );
+                if !permissions.contains(key) {
+                    bail!("App defines a mount, but does not request the mount permission");
                 }
-                service
-                    .volumes
-                    .push(format!("${{APP_CORE_LN_DATA_DIR}}:{}", c_lightning_mount));
+                if let StringOrMap::String(string) = value {
+                    service.volumes.push(format!("${{CITADEL_APP_DATA}}/{}/${{APP_{}_DATA_DIR}}:{}", key, key.to_uppercase().replace("-", "_"), string));
+                } else {
+                    bail!("Mounts must be a map");
+                }
             }
         }
     }
@@ -515,8 +517,10 @@ pub fn convert_config(
         (env_var, main_port.to_string()),
         ("ELECTRUM_IP".to_string(), "${APP_ELECTRUM_IP}".to_string()),
         ("LND_IP".to_string(), "${APP_LND_SERVICE_IP}".to_string()),
-        ("LND_DATA_DIR".to_string(), "${APP_LND_SERVICE_DATA_DIR}".to_string()),
-        ("C_LIGHTNING_IP".to_string(), "${APP_CORE_LIGHTNING_SERVICE_IP}".to_string()),
+        (
+            "C_LIGHTNING_IP".to_string(),
+            "${APP_CORE_LIGHTNING_SERVICE_IP}".to_string(),
+        ),
         ("ELECTRUM_PORT".to_string(), "50001".to_string()),
     ]);
 

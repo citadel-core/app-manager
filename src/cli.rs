@@ -10,7 +10,7 @@ use crate::composegenerator::{
     convert_config, load_config_as_v4,
     types::OutputMetadata,
     v4::{
-        types::{PortMapElement, PortPriority},
+        types::{PortMapElement, PortPriority, StringOrMap},
         utils::{derive_entropy, get_main_container},
     },
 };
@@ -185,6 +185,7 @@ pub fn convert_dir(citadel_root: &str) {
 
     preprocessing::preprocess_apps(citadel_root, &citadel_root.join("apps"));
 
+    let mut data_dirs = HashMap::new();
     for app in apps {
         let app = app.expect("Error reading app directory!");
         let app_id = app.file_name();
@@ -197,66 +198,93 @@ pub fn convert_dir(citadel_root: &str) {
             continue;
         };
 
-        //Part 2: IP & Port assignment
-        {
-            let main_container =
-                get_main_container(&app_yml).unwrap_or_else(|_| "main".to_string());
-            for (service_name, service) in app_yml.services {
-                let ip_name = format!(
-                    "APP_{}_{}_IP",
-                    app_id.to_uppercase().replace('-', "_"),
-                    service_name.to_uppercase().replace('-', "_")
+        //Part 2: IP & Port assignment, also save data dirs
+        let main_container = get_main_container(&app_yml).unwrap_or_else(|_| "main".to_string());
+        let has_service = app_yml.services.contains_key("service");
+        for (service_name, service) in app_yml.services {
+            let ip_name = format!(
+                "APP_{}_{}_IP",
+                app_id.to_uppercase().replace('-', "_"),
+                service_name.to_uppercase().replace('-', "_")
+            );
+            if let std::collections::hash_map::Entry::Vacant(e) = ip_map.entry(ip_name) {
+                if current_suffix == 255 {
+                    panic!("Too many apps!");
+                }
+                let ip = "10.21.21.".to_owned() + current_suffix.to_string().as_str();
+                e.insert(ip);
+                current_suffix += 1;
+            }
+            if let Some(main_port) = service.port {
+                validate_port(
+                    app_id,
+                    &service_name,
+                    main_port,
+                    service.port_priority.unwrap_or(PortPriority::Optional),
+                    false,
+                    app_yml.metadata.implements.clone(),
                 );
-                if let std::collections::hash_map::Entry::Vacant(e) = ip_map.entry(ip_name) {
-                    if current_suffix == 255 {
-                        panic!("Too many apps!");
+            } else if main_container == service_name {
+                validate_port(
+                    app_id,
+                    &service_name,
+                    3000,
+                    PortPriority::Optional,
+                    true,
+                    app_yml.metadata.implements.clone(),
+                );
+            }
+            if let Some(ports) = service.required_ports {
+                if let Some(tcp_ports) = ports.tcp {
+                    for (host_port, _) in tcp_ports {
+                        validate_port(
+                            app_id,
+                            &service_name,
+                            host_port,
+                            PortPriority::Required,
+                            false,
+                            app_yml.metadata.implements.clone(),
+                        );
                     }
-                    let ip = "10.21.21.".to_owned() + current_suffix.to_string().as_str();
-                    e.insert(ip);
-                    current_suffix += 1;
                 }
-                if let Some(main_port) = service.port {
-                    validate_port(
-                        app_id,
-                        &service_name,
-                        main_port,
-                        service.port_priority.unwrap_or(PortPriority::Optional),
-                        false,
-                        app_yml.metadata.implements.clone(),
-                    );
-                } else if main_container == service_name {
-                    validate_port(
-                        app_id,
-                        &service_name,
-                        3000,
-                        PortPriority::Optional,
-                        true,
-                        app_yml.metadata.implements.clone(),
-                    );
+                if let Some(udp_ports) = ports.udp {
+                    for (host_port, _) in udp_ports {
+                        validate_port(
+                            app_id,
+                            &service_name,
+                            host_port,
+                            PortPriority::Required,
+                            false,
+                            app_yml.metadata.implements.clone(),
+                        );
+                    }
                 }
-                if let Some(ports) = service.required_ports {
-                    if let Some(tcp_ports) = ports.tcp {
-                        for (host_port, _) in tcp_ports {
-                            validate_port(
-                                app_id,
-                                &service_name,
-                                host_port,
-                                PortPriority::Required,
-                                false,
-                                app_yml.metadata.implements.clone(),
+            }
+            if let Some(mounts) = service.mounts {
+                if let Some(shared_data) = mounts.get("shared_data") {
+                    if let StringOrMap::String(_) = shared_data {
+                        tracing::warn!(
+                            "App {} defines a string instead of an hashmap as shared data mount",
+                            app_id
+                        );
+                        continue;
+                    } else if let StringOrMap::Map(map) = shared_data {
+                        if map.len() != 1 {
+                            tracing::warn!(
+                                "App {} has multiple shared data mounts, this is not supported!",
+                                app_id
                             );
+                            continue;
                         }
-                    }
-                    if let Some(udp_ports) = ports.udp {
-                        for (host_port, _) in udp_ports {
-                            validate_port(
-                                app_id,
-                                &service_name,
-                                host_port,
-                                PortPriority::Required,
-                                false,
-                                app_yml.metadata.implements.clone(),
+                        if (has_service && service_name == "service")
+                            || (!has_service && service_name == main_container)
+                        {
+                            data_dirs.insert(
+                                app_id.to_lowercase().clone(),
+                                map.keys().next().unwrap().clone(),
                             );
+                        } else {
+                            tracing::warn!("App either has no service container and a shared_data mount in a container that is not the main container, or it has a service container and a shared_data mount in a container that is not the service container. This is not supported!");
                         }
                     }
                 }
@@ -311,6 +339,12 @@ pub fn convert_dir(citadel_root: &str) {
         }
         for (key, value) in &ip_map {
             let to_append = format!("{}={}", key, value);
+            if !env_string.contains(&to_append) {
+                env_string.push_str(&(to_append + "\n"));
+            }
+        }
+        for (key, value) in &data_dirs {
+            let to_append = format!("{}_DATA_DIR={}", key.to_uppercase(), value);
             if !env_string.contains(&to_append) {
                 env_string.push_str(&(to_append + "\n"));
             }

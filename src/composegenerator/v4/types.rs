@@ -32,17 +32,12 @@ pub enum PortPriority {
     Required,
 }
 
-#[derive(Serialize, Deserialize, Clone, Default, Debug, PartialEq, Eq)]
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub struct Mounts {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub bitcoin: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub lnd: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub c_lightning: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub data: Option<HashMap<String, String>>,
+pub enum StringOrMap {
+    String(String),
+    Map(HashMap<String, String>),
 }
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug, PartialEq, Eq)]
@@ -86,7 +81,7 @@ pub struct Container {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub required_ports: Option<PortsDefinition>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub mounts: Option<Mounts>,
+    pub mounts: Option<HashMap<String, StringOrMap>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub assign_fixed_ip: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]

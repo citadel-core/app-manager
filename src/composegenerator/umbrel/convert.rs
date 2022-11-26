@@ -9,7 +9,7 @@ use crate::composegenerator::compose::types::{
 use crate::composegenerator::types::Permissions;
 use crate::composegenerator::umbrel::types::Metadata;
 use crate::composegenerator::v4::types::{
-    AppYml, Container, InputMetadata as CitadelMetadata, Mounts, PortsDefinition,
+    AppYml, Container, InputMetadata as CitadelMetadata, PortsDefinition, StringOrMap,
 };
 use crate::utils::find_env_vars;
 use crate::{bmap, map};
@@ -126,12 +126,8 @@ pub fn convert_compose(
         if service_name == "web" && !has_main {
             service_name = "main".to_string();
         }
-        let mut mounts: Option<Mounts> = Some(Mounts {
-            bitcoin: None,
-            lnd: None,
-            c_lightning: None,
-            data: Some(HashMap::new()),
-        });
+        let mut mounts = HashMap::new();
+        let mut new_data_mounts = HashMap::<String, String>::new();
         for volume in service_def.volumes {
             // Convert mounts using env vars to real mounts
             // For example, if a volume is "${APP_DATA_DIR}/thing:/data",
@@ -147,19 +143,22 @@ pub fn convert_compose(
                     .replace("${APP_DATA_DIR}", "")
                     .replace("$APP_DATA_DIR", "");
                 let volume_name_without_prefix = volume_name_without_prefix.trim_start_matches('/');
-                mounts.as_mut().unwrap().data.as_mut().unwrap().insert(
+                new_data_mounts.insert(
                     volume_name_without_prefix.to_string(),
                     volume_path.to_string(),
                 );
             } else if volume_name.contains("APP_LIGHTNING_NODE_DATA_DIR") {
-                mounts.as_mut().unwrap().lnd = Some(volume_path.to_string());
+                mounts.insert("lnd".to_string(), StringOrMap::String(volume_path.to_string()));
             } else if volume_name.contains("APP_BITCOIN_DATA_DIR") {
-                mounts.as_mut().unwrap().bitcoin = Some(volume_path.to_string());
+                mounts.insert("bitcoin".to_string(), StringOrMap::String(volume_path.to_string()));
             } else if volume_name.contains("APP_CORE_LIGHTNING_REST_CERT_DIR") {
                 bail!("C Lightning mounts are not supported yet");
             } else {
                 bail!("Unsupported mount found.");
             }
+        }
+        if !new_data_mounts.is_empty() {
+            mounts.insert("data".to_string(), StringOrMap::Map(new_data_mounts));
         }
         let mut env: Option<HashMap<String, StringOrIntOrBool>> = Some(HashMap::new());
         let original_env = match service_def.environment {
@@ -352,7 +351,7 @@ pub fn convert_compose(
                     udp: Some(required_udp_ports),
                 })
             },
-            mounts,
+            mounts: Some(mounts),
             assign_fixed_ip: if service_def.networks.is_some() {
                 None
             } else {
