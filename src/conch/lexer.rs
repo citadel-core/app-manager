@@ -260,7 +260,7 @@ impl<I: Iterator<Item = char>> Iterator for Lexer<I> {
         // themselves for the worst possible case. A high estimate
         // is better than no estimate.
         let (_, hi) = self.inner.size_hint();
-        let low = if self.peeked.is_some() { 1 } else { 0 };
+        let low = usize::from(self.peeked.is_some());
         (low, hi)
     }
 }

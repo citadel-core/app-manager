@@ -24,6 +24,7 @@ pub fn v3_to_v4(app: AppYmlV3, installed_services: &Option<&Vec<String>>) -> typ
         support: app.metadata.support,
         gallery: app.metadata.gallery,
         path: app.metadata.path,
+        default_username: None,
         default_password: app.metadata.default_password,
         tor_only: app.metadata.tor_only.unwrap_or(false),
         update_containers: None,

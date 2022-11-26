@@ -108,20 +108,22 @@ pub fn convert(dir: &Path) -> Result<()> {
             let mut declares_env_var = None;
             let mut env_var_value = None;
             match t {
-                crate::conch::ast::Command::Job(_) => todo!(),
+                crate::conch::ast::Command::Job(_) => bail!("Not implemented yet"),
                 crate::conch::ast::Command::List(list) => {
                     if !list.rest.is_empty() {
-                        todo!();
+                        bail!("Not implemented yet");
                     }
                     match list.first {
-                        crate::conch::ast::ListableCommand::Pipe(_, _) => todo!(),
+                        crate::conch::ast::ListableCommand::Pipe(_, _) => {
+                            bail!("Not implemented yet")
+                        }
                         crate::conch::ast::ListableCommand::Single(cmd) => match cmd {
                             crate::conch::ast::PipeableCommand::Simple(cmd) => {
                                 if !cmd.redirects_or_env_vars.is_empty() {
                                     for thing in cmd.redirects_or_env_vars {
                                         match thing {
                                             crate::conch::ast::RedirectOrEnvVar::Redirect(_) => {
-                                                todo!()
+                                                bail!("Not implemented yet")
                                             }
                                             crate::conch::ast::RedirectOrEnvVar::EnvVar(
                                                 name,
@@ -132,7 +134,7 @@ pub fn convert(dir: &Path) -> Result<()> {
                                                     continue;
                                                 }
                                                 match val.unwrap().0 {
-                                                        crate::conch::ast::ComplexWord::Concat(_) => todo!(),
+                                                        crate::conch::ast::ComplexWord::Concat(_) => bail!("Not implemented yet"),
                                                         crate::conch::ast::ComplexWord::Single(single) => {
                                                             match single {
                                                                 crate::conch::ast::Word::Simple(simple) => {
@@ -140,15 +142,15 @@ pub fn convert(dir: &Path) -> Result<()> {
                                                                         crate::conch::ast::SimpleWord::Literal(lit) => {
                                                                             local_env_vars.insert(name, LocalEnvVar::Literal(lit));
                                                                         },
-                                                                        crate::conch::ast::SimpleWord::Escaped(_) => todo!(),
-                                                                        crate::conch::ast::SimpleWord::Param(_) => todo!(),
-                                                                        crate::conch::ast::SimpleWord::Subst(_) => todo!(),
-                                                                        crate::conch::ast::SimpleWord::Star => todo!(),
-                                                                        crate::conch::ast::SimpleWord::Question => todo!(),
-                                                                        crate::conch::ast::SimpleWord::SquareOpen => todo!(),
-                                                                        crate::conch::ast::SimpleWord::SquareClose => todo!(),
-                                                                        crate::conch::ast::SimpleWord::Tilde => todo!(),
-                                                                        crate::conch::ast::SimpleWord::Colon => todo!(),
+                                                                        crate::conch::ast::SimpleWord::Escaped(_) => bail!("Not implemented yet"),
+                                                                        crate::conch::ast::SimpleWord::Param(_) => bail!("Not implemented yet"),
+                                                                        crate::conch::ast::SimpleWord::Subst(_) => bail!("Not implemented yet"),
+                                                                        crate::conch::ast::SimpleWord::Star => bail!("Not implemented yet"),
+                                                                        crate::conch::ast::SimpleWord::Question => bail!("Not implemented yet"),
+                                                                        crate::conch::ast::SimpleWord::SquareOpen => bail!("Not implemented yet"),
+                                                                        crate::conch::ast::SimpleWord::SquareClose => bail!("Not implemented yet"),
+                                                                        crate::conch::ast::SimpleWord::Tilde => bail!("Not implemented yet"),
+                                                                        crate::conch::ast::SimpleWord::Colon => bail!("Not implemented yet"),
                                                                     }
                                                                 },
                                                                 crate::conch::ast::Word::DoubleQuoted(quoted) => {
@@ -156,44 +158,44 @@ pub fn convert(dir: &Path) -> Result<()> {
                                                                         if let crate::conch::ast::SimpleWord::Param(param) = &quoted[0] {
                                                                             if let crate::conch::ast::Parameter::Var(var) = param {
                                                                                 if var != "EXPORTS_TOR_DATA_DIR" {
-                                                                                    todo!();
+                                                                                    bail!("Not implemented yet");
                                                                                 }
                                                                             } else {
-                                                                                todo!();
+                                                                                bail!("Not implemented yet");
                                                                             }
                                                                         } else {
-                                                                            todo!();
+                                                                            bail!("Not implemented yet");
                                                                         }
                                                                         if let crate::conch::ast::SimpleWord::Literal(literal) = &quoted[1] {
                                                                             if literal != "/app-" {
-                                                                                todo!();
+                                                                                bail!("Not implemented yet");
                                                                             }
                                                                         } else {
-                                                                            todo!();
+                                                                            bail!("Not implemented yet");
                                                                         }
                                                                         if let crate::conch::ast::SimpleWord::Param(param) = &quoted[2] {
                                                                             if let crate::conch::ast::Parameter::Var(var) = param {
                                                                                 if var != "EXPORTS_APP_ID" {
-                                                                                    todo!();
+                                                                                    bail!("Not implemented yet");
                                                                                 }
                                                                             } else {
-                                                                                todo!();
+                                                                                bail!("Not implemented yet");
                                                                             }
                                                                         } else {
-                                                                            todo!();
+                                                                            bail!("Not implemented yet");
                                                                         }
                                                                         if let crate::conch::ast::SimpleWord::Literal(literal) = &quoted[3] {
                                                                             if literal.starts_with('-') && literal.ends_with("/hostname") {
                                                                                 local_env_vars.insert(name, LocalEnvVar::TorDataDir(literal[1..literal.len() - 9].to_string()));
                                                                             }
                                                                         } else {
-                                                                            todo!();
+                                                                            bail!("Not implemented yet");
                                                                         }
                                                                     } else {
-                                                                        todo!();
+                                                                        bail!("Not implemented yet");
                                                                     }
                                                                 },
-                                                                crate::conch::ast::Word::SingleQuoted(_) => todo!(),
+                                                                crate::conch::ast::Word::SingleQuoted(_) => bail!("Not implemented yet"),
                                                             }
                                                         },
                                                     }
@@ -204,7 +206,7 @@ pub fn convert(dir: &Path) -> Result<()> {
                                 for word in cmd.redirects_or_cmd_words {
                                     match word {
                                         crate::conch::ast::RedirectOrCmdWord::Redirect(_) => {
-                                            todo!()
+                                            bail!("Not implemented yet")
                                         }
                                         crate::conch::ast::RedirectOrCmdWord::CmdWord(word) => {
                                             match word.0 {
@@ -221,18 +223,18 @@ pub fn convert(dir: &Path) -> Result<()> {
                                                                                 env_var_value = Some(lit);
                                                                             } else {
                                                                                 println!("Unexpected literal: {}", lit);
-                                                                                todo!();
+                                                                                bail!("Not implemented yet");
                                                                             }
                                                                         },
-                                                                        crate::conch::ast::SimpleWord::Escaped(_) => todo!(),
-                                                                        crate::conch::ast::SimpleWord::Param(_) => todo!(),
-                                                                        crate::conch::ast::SimpleWord::Subst(_) => todo!(),
-                                                                        crate::conch::ast::SimpleWord::Star => todo!(),
-                                                                        crate::conch::ast::SimpleWord::Question => todo!(),
-                                                                        crate::conch::ast::SimpleWord::SquareOpen => todo!(),
-                                                                        crate::conch::ast::SimpleWord::SquareClose => todo!(),
-                                                                        crate::conch::ast::SimpleWord::Tilde => todo!(),
-                                                                        crate::conch::ast::SimpleWord::Colon => todo!(),
+                                                                        crate::conch::ast::SimpleWord::Escaped(_) => bail!("Not implemented yet"),
+                                                                        crate::conch::ast::SimpleWord::Param(_) => bail!("Not implemented yet"),
+                                                                        crate::conch::ast::SimpleWord::Subst(_) => bail!("Not implemented yet"),
+                                                                        crate::conch::ast::SimpleWord::Star => bail!("Not implemented yet"),
+                                                                        crate::conch::ast::SimpleWord::Question => bail!("Not implemented yet"),
+                                                                        crate::conch::ast::SimpleWord::SquareOpen => bail!("Not implemented yet"),
+                                                                        crate::conch::ast::SimpleWord::SquareClose => bail!("Not implemented yet"),
+                                                                        crate::conch::ast::SimpleWord::Tilde => bail!("Not implemented yet"),
+                                                                        crate::conch::ast::SimpleWord::Colon => bail!("Not implemented yet"),
                                                                     }
                                                                 },
                                                                 crate::conch::ast::Word::DoubleQuoted(quoted) => {
@@ -243,24 +245,24 @@ pub fn convert(dir: &Path) -> Result<()> {
                                                                                 crate::conch::ast::SimpleWord::Literal(lit) => {
                                                                                     real_value += &lit;
                                                                                 },
-                                                                                crate::conch::ast::SimpleWord::Escaped(_) => todo!(),
+                                                                                crate::conch::ast::SimpleWord::Escaped(_) => bail!("Not implemented yet"),
                                                                                 crate::conch::ast::SimpleWord::Param(param) => {
                                                                                     match param {
-                                                                                        crate::conch::ast::Parameter::At => todo!(),
-                                                                                        crate::conch::ast::Parameter::Star => todo!(),
-                                                                                        crate::conch::ast::Parameter::Pound => todo!(),
-                                                                                        crate::conch::ast::Parameter::Question => todo!(),
-                                                                                        crate::conch::ast::Parameter::Dash => todo!(),
-                                                                                        crate::conch::ast::Parameter::Dollar => todo!(),
-                                                                                        crate::conch::ast::Parameter::Bang => todo!(),
-                                                                                        crate::conch::ast::Parameter::Positional(_) => todo!(),
+                                                                                        crate::conch::ast::Parameter::At => bail!("Not implemented yet"),
+                                                                                        crate::conch::ast::Parameter::Star => bail!("Not implemented yet"),
+                                                                                        crate::conch::ast::Parameter::Pound => bail!("Not implemented yet"),
+                                                                                        crate::conch::ast::Parameter::Question => bail!("Not implemented yet"),
+                                                                                        crate::conch::ast::Parameter::Dash => bail!("Not implemented yet"),
+                                                                                        crate::conch::ast::Parameter::Dollar => bail!("Not implemented yet"),
+                                                                                        crate::conch::ast::Parameter::Bang => bail!("Not implemented yet"),
+                                                                                        crate::conch::ast::Parameter::Positional(_) => bail!("Not implemented yet"),
                                                                                         crate::conch::ast::Parameter::Var(var) => {
                                                                                             if let Some(value) = local_env_vars.get(&var) {
                                                                                                 match value {
                                                                                                     LocalEnvVar::Literal(literal) => {
                                                                                                         real_value += literal;
                                                                                                     },
-                                                                                                    LocalEnvVar::TorDataDir(_) => todo!(),
+                                                                                                    LocalEnvVar::TorDataDir(_) => bail!("Not implemented yet"),
                                                                                                 }
                                                                                             } else if let Some(value) = env_vars.get(&var) {
                                                                                                 real_value += value;
@@ -279,25 +281,25 @@ pub fn convert(dir: &Path) -> Result<()> {
                                                                                             } else {
                                                                                                 println!("Unknown variable: {}", var);
                                                                                                 println!("{:#?}", env_vars);
-                                                                                                todo!();
+                                                                                                bail!("Not implemented yet");
                                                                                             }
                                                                                         },
                                                                                     }
                                                                                 },
-                                                                                crate::conch::ast::SimpleWord::Subst(_) => todo!(),
-                                                                                crate::conch::ast::SimpleWord::Star => todo!(),
-                                                                                crate::conch::ast::SimpleWord::Question => todo!(),
-                                                                                crate::conch::ast::SimpleWord::SquareOpen => todo!(),
-                                                                                crate::conch::ast::SimpleWord::SquareClose => todo!(),
-                                                                                crate::conch::ast::SimpleWord::Tilde => todo!(),
-                                                                                crate::conch::ast::SimpleWord::Colon => todo!(),
+                                                                                crate::conch::ast::SimpleWord::Subst(_) => bail!("Not implemented yet"),
+                                                                                crate::conch::ast::SimpleWord::Star => bail!("Not implemented yet"),
+                                                                                crate::conch::ast::SimpleWord::Question => bail!("Not implemented yet"),
+                                                                                crate::conch::ast::SimpleWord::SquareOpen => bail!("Not implemented yet"),
+                                                                                crate::conch::ast::SimpleWord::SquareClose => bail!("Not implemented yet"),
+                                                                                crate::conch::ast::SimpleWord::Tilde => bail!("Not implemented yet"),
+                                                                                crate::conch::ast::SimpleWord::Colon => bail!("Not implemented yet"),
                                                                             }
                                                                         }
                                                                         if is_env_var_decl && declares_env_var.is_some() && env_var_value.is_none() {
                                                                             env_var_value = Some(real_value);
                                                                         } else {
                                                                             println!("Unexpected value: {}", real_value);
-                                                                            todo!();
+                                                                            bail!("Not implemented yet");
                                                                         }
                                                                     } else if declares_env_var.is_some() && env_var_value.is_none() {
                                                                         match &quoted[0] {
@@ -306,112 +308,113 @@ pub fn convert(dir: &Path) -> Result<()> {
                                                                                     env_var_value = Some(lit.to_owned());
                                                                                 } else {
                                                                                     println!("Unexpected literal: {}", lit);
-                                                                                    todo!();
+                                                                                    bail!("Not implemented yet");
                                                                                 }
                                                                             },
-                                                                            crate::conch::ast::SimpleWord::Escaped(_) => todo!(),
-                                                                            crate::conch::ast::SimpleWord::Param(_) => todo!(),
+                                                                            crate::conch::ast::SimpleWord::Escaped(_) => bail!("Not implemented yet"),
+                                                                            crate::conch::ast::SimpleWord::Param(_) => bail!("Not implemented yet"),
                                                                             crate::conch::ast::SimpleWord::Subst(subst) => {
                                                                                 match subst.as_ref() {
                                                                                     crate::conch::ast::ParameterSubstitution::Command(cmd) => {
                                                                                         if cmd.len() == 1 {
                                                                                             match &cmd[0].0 {
-                                                                                                crate::conch::ast::Command::Job(_) => todo!(),
+                                                                                                crate::conch::ast::Command::Job(_) => bail!("Not implemented yet"),
                                                                                                 crate::conch::ast::Command::List(list) => {
                                                                                                     match &list.first {
-                                                                                                        crate::conch::ast::ListableCommand::Pipe(_, _) => todo!(),
+                                                                                                        crate::conch::ast::ListableCommand::Pipe(_, _) => bail!("Not implemented yet"),
                                                                                                         crate::conch::ast::ListableCommand::Single(single) => {
                                                                                                             match single {
                                                                                                                 crate::conch::ast::PipeableCommand::Simple(simple) => {
                                                                                                                     if !simple.redirects_or_env_vars.is_empty() {
-                                                                                                                        todo!();
+                                                                                                                        bail!("Not implemented yet");
                                                                                                                     }
                                                                                                                     if !simple.redirects_or_cmd_words.is_empty() {
                                                                                                                         for (i, thing) in simple.redirects_or_cmd_words.clone().into_iter().enumerate() {
                                                                                                                             match thing {
                                                                                                                                 crate::conch::ast::RedirectOrCmdWord::Redirect(redirect) => {
                                                                                                                                     match redirect {
-                                                                                                                                        crate::conch::ast::Redirect::Read(_, _) => todo!(),
+                                                                                                                                        crate::conch::ast::Redirect::Read(_, _) => bail!("Not implemented yet"),
                                                                                                                                         crate::conch::ast::Redirect::Write(what, target) => {
                                                                                                                                             if what == Some(2) && target == crate::conch::ast::TopLevelWord::from(crate::conch::ast::ComplexWord::Single(crate::conch::ast::Word::Simple(crate::conch::ast::SimpleWord::Literal("/dev/null".to_string())))) {
                                                                                                                                                 // This is to ignore errors, we can ignore it
                                                                                                                                             }
                                                                                                                                         },
-                                                                                                                                        crate::conch::ast::Redirect::ReadWrite(_, _) => todo!(),
-                                                                                                                                        crate::conch::ast::Redirect::Append(_, _) => todo!(),
-                                                                                                                                        crate::conch::ast::Redirect::Clobber(_, _) => todo!(),
-                                                                                                                                        crate::conch::ast::Redirect::Heredoc(_, _) => todo!(),
-                                                                                                                                        crate::conch::ast::Redirect::DupRead(_, _) => todo!(),
-                                                                                                                                        crate::conch::ast::Redirect::DupWrite(_, _) => todo!(),
+                                                                                                                                        crate::conch::ast::Redirect::ReadWrite(_, _) => bail!("Not implemented yet"),
+                                                                                                                                        crate::conch::ast::Redirect::Append(_, _) => bail!("Not implemented yet"),
+                                                                                                                                        crate::conch::ast::Redirect::Clobber(_, _) => bail!("Not implemented yet"),
+                                                                                                                                        crate::conch::ast::Redirect::Heredoc(_, _) => bail!("Not implemented yet"),
+                                                                                                                                        crate::conch::ast::Redirect::DupRead(_, _) => bail!("Not implemented yet"),
+                                                                                                                                        crate::conch::ast::Redirect::DupWrite(_, _) => bail!("Not implemented yet"),
                                                                                                                                     }
                                                                                                                                 },
                                                                                                                                 crate::conch::ast::RedirectOrCmdWord::CmdWord(word) =>{
                                                                                                                                     match &word.0 {
-                                                                                                                                        crate::conch::ast::ComplexWord::Concat(_) => todo!(),
+                                                                                                                                        crate::conch::ast::ComplexWord::Concat(_) => bail!("Not implemented yet"),
                                                                                                                                         crate::conch::ast::ComplexWord::Single(single) => {
                                                                                                                                             match single {
                                                                                                                                                 crate::conch::ast::Word::Simple(simple) => {
                                                                                                                                                     match simple {
+                                                                                                                                                        #[allow(clippy::if_same_then_else)]
                                                                                                                                                         crate::conch::ast::SimpleWord::Literal(lit) => {
                                                                                                                                                             if i == 0 && lit != "cat" {
-                                                                                                                                                                todo!();
+                                                                                                                                                                bail!("Not implemented yet");
                                                                                                                                                             } else if i != 0 {
-                                                                                                                                                                todo!();
+                                                                                                                                                                bail!("Not implemented yet");
                                                                                                                                                             }
                                                                                                                                                         },
-                                                                                                                                                        crate::conch::ast::SimpleWord::Escaped(_) => todo!(),
-                                                                                                                                                        crate::conch::ast::SimpleWord::Param(_) => todo!(),
-                                                                                                                                                        crate::conch::ast::SimpleWord::Subst(_) => todo!(),
-                                                                                                                                                        crate::conch::ast::SimpleWord::Star => todo!(),
-                                                                                                                                                        crate::conch::ast::SimpleWord::Question => todo!(),
-                                                                                                                                                        crate::conch::ast::SimpleWord::SquareOpen => todo!(),
-                                                                                                                                                        crate::conch::ast::SimpleWord::SquareClose => todo!(),
-                                                                                                                                                        crate::conch::ast::SimpleWord::Tilde => todo!(),
-                                                                                                                                                        crate::conch::ast::SimpleWord::Colon => todo!(),
+                                                                                                                                                        crate::conch::ast::SimpleWord::Escaped(_) => bail!("Not implemented yet"),
+                                                                                                                                                        crate::conch::ast::SimpleWord::Param(_) => bail!("Not implemented yet"),
+                                                                                                                                                        crate::conch::ast::SimpleWord::Subst(_) => bail!("Not implemented yet"),
+                                                                                                                                                        crate::conch::ast::SimpleWord::Star => bail!("Not implemented yet"),
+                                                                                                                                                        crate::conch::ast::SimpleWord::Question => bail!("Not implemented yet"),
+                                                                                                                                                        crate::conch::ast::SimpleWord::SquareOpen => bail!("Not implemented yet"),
+                                                                                                                                                        crate::conch::ast::SimpleWord::SquareClose => bail!("Not implemented yet"),
+                                                                                                                                                        crate::conch::ast::SimpleWord::Tilde => bail!("Not implemented yet"),
+                                                                                                                                                        crate::conch::ast::SimpleWord::Colon => bail!("Not implemented yet"),
                                                                                                                                                     }
                                                                                                                                                 },
                                                                                                                                                 crate::conch::ast::Word::DoubleQuoted(quoted) => {
                                                                                                                                                     if quoted.len() != 1 {
-                                                                                                                                                        todo!();
+                                                                                                                                                        bail!("Not implemented yet");
                                                                                                                                                     }
                                                                                                                                                     match &quoted[0] {
-                                                                                                                                                        crate::conch::ast::SimpleWord::Literal(_) => todo!(),
-                                                                                                                                                        crate::conch::ast::SimpleWord::Escaped(_) => todo!(),
+                                                                                                                                                        crate::conch::ast::SimpleWord::Literal(_) => bail!("Not implemented yet"),
+                                                                                                                                                        crate::conch::ast::SimpleWord::Escaped(_) => bail!("Not implemented yet"),
                                                                                                                                                         crate::conch::ast::SimpleWord::Param(param) => {
                                                                                                                                                             match param {
-                                                                                                                                                                crate::conch::ast::Parameter::At => todo!(),
-                                                                                                                                                                crate::conch::ast::Parameter::Star => todo!(),
-                                                                                                                                                                crate::conch::ast::Parameter::Pound => todo!(),
-                                                                                                                                                                crate::conch::ast::Parameter::Question => todo!(),
-                                                                                                                                                                crate::conch::ast::Parameter::Dash => todo!(),
-                                                                                                                                                                crate::conch::ast::Parameter::Dollar => todo!(),
-                                                                                                                                                                crate::conch::ast::Parameter::Bang => todo!(),
-                                                                                                                                                                crate::conch::ast::Parameter::Positional(_) => todo!(),
+                                                                                                                                                                crate::conch::ast::Parameter::At => bail!("Not implemented yet"),
+                                                                                                                                                                crate::conch::ast::Parameter::Star => bail!("Not implemented yet"),
+                                                                                                                                                                crate::conch::ast::Parameter::Pound => bail!("Not implemented yet"),
+                                                                                                                                                                crate::conch::ast::Parameter::Question => bail!("Not implemented yet"),
+                                                                                                                                                                crate::conch::ast::Parameter::Dash => bail!("Not implemented yet"),
+                                                                                                                                                                crate::conch::ast::Parameter::Dollar => bail!("Not implemented yet"),
+                                                                                                                                                                crate::conch::ast::Parameter::Bang => bail!("Not implemented yet"),
+                                                                                                                                                                crate::conch::ast::Parameter::Positional(_) => bail!("Not implemented yet"),
                                                                                                                                                                 crate::conch::ast::Parameter::Var(var_name) => {
                                                                                                                                                                     if let Some(thing) = local_env_vars.get(var_name) {
                                                                                                                                                                         match thing {
-                                                                                                                                                                            LocalEnvVar::Literal(_) => todo!(),
+                                                                                                                                                                            LocalEnvVar::Literal(_) => bail!("Not implemented yet"),
                                                                                                                                                                             LocalEnvVar::TorDataDir(tor_data_dir) => {
                                                                                                                                                                                 env_var_value = Some(format!("$APP_HIDDEN_SERVICE_{}", tor_data_dir.to_uppercase().replace('-', "_")));
                                                                                                                                                                             },
                                                                                                                                                                         }
                                                                                                                                                                     } else {
                                                                                                                                                                         println!("Unknown env var: {}", var_name);
-                                                                                                                                                                        todo!();
+                                                                                                                                                                        bail!("Not implemented yet");
                                                                                                                                                                     }
                                                                                                                                                                 },
                                                                                                                                                             }
                                                                                                                                                         },
-                                                                                                                                                        crate::conch::ast::SimpleWord::Subst(_) => todo!(),
-                                                                                                                                                        crate::conch::ast::SimpleWord::Star => todo!(),
-                                                                                                                                                        crate::conch::ast::SimpleWord::Question => todo!(),
-                                                                                                                                                        crate::conch::ast::SimpleWord::SquareOpen => todo!(),
-                                                                                                                                                        crate::conch::ast::SimpleWord::SquareClose => todo!(),
-                                                                                                                                                        crate::conch::ast::SimpleWord::Tilde => todo!(),
-                                                                                                                                                        crate::conch::ast::SimpleWord::Colon => todo!(),
+                                                                                                                                                        crate::conch::ast::SimpleWord::Subst(_) => bail!("Not implemented yet"),
+                                                                                                                                                        crate::conch::ast::SimpleWord::Star => bail!("Not implemented yet"),
+                                                                                                                                                        crate::conch::ast::SimpleWord::Question => bail!("Not implemented yet"),
+                                                                                                                                                        crate::conch::ast::SimpleWord::SquareOpen => bail!("Not implemented yet"),
+                                                                                                                                                        crate::conch::ast::SimpleWord::SquareClose => bail!("Not implemented yet"),
+                                                                                                                                                        crate::conch::ast::SimpleWord::Tilde => bail!("Not implemented yet"),
+                                                                                                                                                        crate::conch::ast::SimpleWord::Colon => bail!("Not implemented yet"),
                                                                                                                                                     }
                                                                                                                                                 },
-                                                                                                                                                crate::conch::ast::Word::SingleQuoted(_) => todo!(),
+                                                                                                                                                crate::conch::ast::Word::SingleQuoted(_) => bail!("Not implemented yet"),
                                                                                                                                             }
                                                                                                                                         },
                                                                                                                                     }
@@ -420,17 +423,17 @@ pub fn convert(dir: &Path) -> Result<()> {
                                                                                                                         }
                                                                                                                     }
                                                                                                                 },
-                                                                                                                crate::conch::ast::PipeableCommand::Compound(_) => todo!(),
-                                                                                                                crate::conch::ast::PipeableCommand::FunctionDef(_, _) => todo!(),
+                                                                                                                crate::conch::ast::PipeableCommand::Compound(_) => bail!("Not implemented yet"),
+                                                                                                                crate::conch::ast::PipeableCommand::FunctionDef(_, _) => bail!("Not implemented yet"),
                                                                                                             }
                                                                                                         },
                                                                                                     }
                                                                                                     if !list.rest.is_empty() {
                                                                                                         for thing in &list.rest {
                                                                                                             match thing {
-                                                                                                                crate::conch::ast::AndOr::And(_) => todo!(),
+                                                                                                                crate::conch::ast::AndOr::And(_) => bail!("Not implemented yet"),
                                                                                                                 crate::conch::ast::AndOr::Or(_or) => {
-                                                                                                                    //todo!()
+                                                                                                                    //bail!("Not implemented yet")
                                                                                                                     // Ignore fallbacks for now
                                                                                                                 },
                                                                                                             }
@@ -440,34 +443,34 @@ pub fn convert(dir: &Path) -> Result<()> {
                                                                                             }
                                                                                         } else {
                                                                                             println!("Unexpected command substitution: {:#?}", cmd);
-                                                                                            todo!();
+                                                                                            bail!("Not implemented yet");
                                                                                         }
                                                                                     },
-                                                                                    crate::conch::ast::ParameterSubstitution::Len(_) => todo!(),
-                                                                                    crate::conch::ast::ParameterSubstitution::Arith(_) => todo!(),
-                                                                                    crate::conch::ast::ParameterSubstitution::Default(_, _, _) => todo!(),
-                                                                                    crate::conch::ast::ParameterSubstitution::Assign(_, _, _) => todo!(),
-                                                                                    crate::conch::ast::ParameterSubstitution::Error(_, _, _) => todo!(),
-                                                                                    crate::conch::ast::ParameterSubstitution::Alternative(_, _, _) => todo!(),
-                                                                                    crate::conch::ast::ParameterSubstitution::RemoveSmallestSuffix(_, _) => todo!(),
-                                                                                    crate::conch::ast::ParameterSubstitution::RemoveLargestSuffix(_, _) => todo!(),
-                                                                                    crate::conch::ast::ParameterSubstitution::RemoveSmallestPrefix(_, _) => todo!(),
-                                                                                    crate::conch::ast::ParameterSubstitution::RemoveLargestPrefix(_, _) => todo!(),
+                                                                                    crate::conch::ast::ParameterSubstitution::Len(_) => bail!("Not implemented yet"),
+                                                                                    crate::conch::ast::ParameterSubstitution::Arith(_) => bail!("Not implemented yet"),
+                                                                                    crate::conch::ast::ParameterSubstitution::Default(_, _, _) => bail!("Not implemented yet"),
+                                                                                    crate::conch::ast::ParameterSubstitution::Assign(_, _, _) => bail!("Not implemented yet"),
+                                                                                    crate::conch::ast::ParameterSubstitution::Error(_, _, _) => bail!("Not implemented yet"),
+                                                                                    crate::conch::ast::ParameterSubstitution::Alternative(_, _, _) => bail!("Not implemented yet"),
+                                                                                    crate::conch::ast::ParameterSubstitution::RemoveSmallestSuffix(_, _) => bail!("Not implemented yet"),
+                                                                                    crate::conch::ast::ParameterSubstitution::RemoveLargestSuffix(_, _) => bail!("Not implemented yet"),
+                                                                                    crate::conch::ast::ParameterSubstitution::RemoveSmallestPrefix(_, _) => bail!("Not implemented yet"),
+                                                                                    crate::conch::ast::ParameterSubstitution::RemoveLargestPrefix(_, _) => bail!("Not implemented yet"),
                                                                                 }
                                                                             },
-                                                                            crate::conch::ast::SimpleWord::Star => todo!(),
-                                                                            crate::conch::ast::SimpleWord::Question => todo!(),
-                                                                            crate::conch::ast::SimpleWord::SquareOpen => todo!(),
-                                                                            crate::conch::ast::SimpleWord::SquareClose => todo!(),
-                                                                            crate::conch::ast::SimpleWord::Tilde => todo!(),
-                                                                            crate::conch::ast::SimpleWord::Colon => todo!(),
+                                                                            crate::conch::ast::SimpleWord::Star => bail!("Not implemented yet"),
+                                                                            crate::conch::ast::SimpleWord::Question => bail!("Not implemented yet"),
+                                                                            crate::conch::ast::SimpleWord::SquareOpen => bail!("Not implemented yet"),
+                                                                            crate::conch::ast::SimpleWord::SquareClose => bail!("Not implemented yet"),
+                                                                            crate::conch::ast::SimpleWord::Tilde => bail!("Not implemented yet"),
+                                                                            crate::conch::ast::SimpleWord::Colon => bail!("Not implemented yet"),
                                                                         }
                                                                     } else {
                                                                         println!("Unexpected double quoted word: {:?}", quoted);
-                                                                        todo!();
+                                                                        bail!("Not implemented yet");
                                                                     }
                                                                 },
-                                                                crate::conch::ast::Word::SingleQuoted(_) => todo!(),
+                                                                crate::conch::ast::Word::SingleQuoted(_) => bail!("Not implemented yet"),
                                                             }
                                                         }
                                                     },
@@ -480,22 +483,22 @@ pub fn convert(dir: &Path) -> Result<()> {
                                                                             is_env_var_decl = true;
                                                                             continue;
                                                                         } else {
-                                                                            todo!();
+                                                                            bail!("Not implemented yet");
                                                                         }
                                                                     },
-                                                                    crate::conch::ast::SimpleWord::Escaped(_) => todo!(),
-                                                                    crate::conch::ast::SimpleWord::Param(_) => todo!(),
-                                                                    crate::conch::ast::SimpleWord::Subst(_) => todo!(),
-                                                                    crate::conch::ast::SimpleWord::Star => todo!(),
-                                                                    crate::conch::ast::SimpleWord::Question => todo!(),
-                                                                    crate::conch::ast::SimpleWord::SquareOpen => todo!(),
-                                                                    crate::conch::ast::SimpleWord::SquareClose => todo!(),
-                                                                    crate::conch::ast::SimpleWord::Tilde => todo!(),
-                                                                    crate::conch::ast::SimpleWord::Colon => todo!(),
+                                                                    crate::conch::ast::SimpleWord::Escaped(_) => bail!("Not implemented yet"),
+                                                                    crate::conch::ast::SimpleWord::Param(_) => bail!("Not implemented yet"),
+                                                                    crate::conch::ast::SimpleWord::Subst(_) => bail!("Not implemented yet"),
+                                                                    crate::conch::ast::SimpleWord::Star => bail!("Not implemented yet"),
+                                                                    crate::conch::ast::SimpleWord::Question => bail!("Not implemented yet"),
+                                                                    crate::conch::ast::SimpleWord::SquareOpen => bail!("Not implemented yet"),
+                                                                    crate::conch::ast::SimpleWord::SquareClose => bail!("Not implemented yet"),
+                                                                    crate::conch::ast::SimpleWord::Tilde => bail!("Not implemented yet"),
+                                                                    crate::conch::ast::SimpleWord::Colon => bail!("Not implemented yet"),
                                                                 }
                                                             },
-                                                            crate::conch::ast::Word::DoubleQuoted(_) => todo!(),
-                                                            crate::conch::ast::Word::SingleQuoted(_) => todo!(),
+                                                            crate::conch::ast::Word::DoubleQuoted(_) => bail!("Not implemented yet"),
+                                                            crate::conch::ast::Word::SingleQuoted(_) => bail!("Not implemented yet"),
                                                         }
                                                     },
                                                 }
@@ -505,9 +508,11 @@ pub fn convert(dir: &Path) -> Result<()> {
                             }
                             crate::conch::ast::PipeableCommand::Compound(compound) => {
                                 println!("Unexpected compound command: {:#?}", compound);
-                                todo!();
+                                bail!("Not implemented yet");
                             }
-                            crate::conch::ast::PipeableCommand::FunctionDef(_, _) => todo!(),
+                            crate::conch::ast::PipeableCommand::FunctionDef(_, _) => {
+                                bail!("Not implemented yet")
+                            }
                         },
                     }
                 }
@@ -535,22 +540,35 @@ pub fn convert(dir: &Path) -> Result<()> {
                     if !services.contains_key(&service_name)
                         && services.contains_key(&service_name.replace('-', ""))
                     {
-                        key = format!("APP_{}_{}_IP", uppercase_id.replace('-', "_"), service_name.replace('-', ""));
+                        key = format!(
+                            "APP_{}_{}_IP",
+                            uppercase_id.replace('-', "_"),
+                            service_name.replace('-', "")
+                        );
                     }
                     // A way that is actually used is leaving everything after the first - of the app name out of the app name and env var
                     let app_name_short = uppercase_id.split('-').next().unwrap();
                     let alt_service_name = env_var_name
-                        .trim_start_matches(
-                            format!("APP_{}_", app_name_short)
-                                .as_str(),
-                        )
+                        .trim_start_matches(format!("APP_{}_", app_name_short).as_str())
                         .trim_end_matches("_IP")
                         .to_lowercase()
                         .replace('_', "-");
-                    if !services.contains_key(&service_name) && services.contains_key(&alt_service_name) {
-                        key = format!("APP_{}_{}_IP", app_name_short, alt_service_name.to_uppercase().replace('-', "_"));
-                    } else if !services.contains_key(&service_name) && services.contains_key(&alt_service_name.replace('-', "")) {
-                        key = format!("APP_{}_{}_IP", app_name_short, alt_service_name.to_uppercase().replace('-', ""));
+                    if !services.contains_key(&service_name)
+                        && services.contains_key(&alt_service_name)
+                    {
+                        key = format!(
+                            "APP_{}_{}_IP",
+                            app_name_short,
+                            alt_service_name.to_uppercase().replace('-', "_")
+                        );
+                    } else if !services.contains_key(&service_name)
+                        && services.contains_key(&alt_service_name.replace('-', ""))
+                    {
+                        key = format!(
+                            "APP_{}_{}_IP",
+                            app_name_short,
+                            alt_service_name.to_uppercase().replace('-', "")
+                        );
                     }
                     env_vars.insert(env_var_name, format!("${{{}}}", key));
                 }

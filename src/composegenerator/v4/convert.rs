@@ -575,6 +575,7 @@ pub fn convert_config(
         support: app.metadata.support,
         gallery: app.metadata.gallery,
         path: app.metadata.path,
+        default_username: app.metadata.default_username,
         default_password: app.metadata.default_password,
         tor_only: app.metadata.tor_only,
         update_containers: app.metadata.update_containers,

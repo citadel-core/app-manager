@@ -41,6 +41,7 @@ pub fn convert_metadata(metadata: Metadata) -> CitadelMetadata {
         },
         gallery: metadata.gallery,
         path: metadata.path,
+        default_username: metadata.default_username,
         default_password: if metadata.deterministic_password {
             Some("$APP_SEED".to_string())
         } else {

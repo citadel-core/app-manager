@@ -704,7 +704,7 @@ impl<I: Iterator<Item = Token>, B: Builder> Parser<I, B> {
 
             match *word {
                 Simple(ref s) => simple_could_be_numeric(s),
-                SingleQuoted(ref s) => s.chars().all(|c| c.is_digit(10)),
+                SingleQuoted(ref s) => s.chars().all(|c| c.is_ascii_digit()),
                 DoubleQuoted(ref fragments) => fragments.iter().all(simple_could_be_numeric),
             }
         }
