@@ -515,6 +515,7 @@ pub fn convert_config(
         (env_var, main_port.to_string()),
         ("ELECTRUM_IP".to_string(), "${APP_ELECTRUM_IP}".to_string()),
         ("LND_IP".to_string(), "${APP_LND_SERVICE_IP}".to_string()),
+        ("LND_DATA_DIR".to_string(), "${APP_LND_SERVICE_DATA_DIR}".to_string()),
         ("C_LIGHTNING_IP".to_string(), "${APP_CORE_LIGHTNING_SERVICE_IP}".to_string()),
         ("ELECTRUM_PORT".to_string(), "50001".to_string()),
     ]);
