@@ -14,7 +14,26 @@ use crate::{
     utils::flatten,
 };
 
-fn convert_app_yml(
+use anyhow::Result;
+
+pub fn convert_app_yml(
+    app_path: &Path,
+    services: &[String],
+    citadel_seed: &Option<String>,
+) -> Result<()> {
+    let app_yml_jinja = app_path.to_path_buf().join("app.yml.jinja");
+    if app_yml_jinja.exists() && citadel_seed.is_some() {
+        convert_app_yml_internal(
+            &app_yml_jinja,
+            app_path.file_name().unwrap().to_str().unwrap(),
+            services,
+            citadel_seed.as_ref().unwrap(),
+        )?;
+    }
+    Ok(())
+}
+
+fn convert_app_yml_internal(
     jinja_file: &Path,
     app_id: &str,
     services: &[String],
@@ -134,22 +153,12 @@ fn convert_config_template(
     writer.write_all(tmpl_result.unwrap().as_bytes())
 }
 
-pub fn convert_app_jinja_files(
+pub fn convert_app_config_files(
     app_path: &Path,
     services: &[String],
     citadel_seed: &Option<String>,
     env_vars: &Option<HashMap<String, String>>,
 ) -> Result<(), Error> {
-    let app_yml_jinja = app_path.to_path_buf().join("app.yml.jinja");
-    if app_yml_jinja.exists() && citadel_seed.is_some() {
-        convert_app_yml(
-            &app_yml_jinja,
-            app_path.file_name().unwrap().to_str().unwrap(),
-            services,
-            citadel_seed.as_ref().unwrap(),
-        )?;
-    }
-
     if citadel_seed.is_some() && env_vars.is_some() {
         let citadel_seed = citadel_seed.as_ref().unwrap();
         let env_vars = env_vars.as_ref().unwrap();

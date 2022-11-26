@@ -35,13 +35,11 @@ struct PortCacheMapEntry {
 // Outside port -> app
 type PortCacheMap = HashMap<u16, PortCacheMapEntry>;
 
-static RESERVED_PORTS: [u16; 6] = [
+static RESERVED_PORTS: [u16; 4] = [
     80,    // Dashboard
     433,   // Sometimes used by nginx with some setups
     443,   // Dashboard SSL
     8333,  // Bitcoin Core P2P
-    10009, // LND gRPC
-    8080,  // LND REST
 ];
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -484,4 +482,7 @@ pub fn convert_dir(citadel_root: &str) {
             .write_all(i2p_entries.join("\n").as_bytes())
             .expect("Error writing apps.conf!");
     }
+
+    // Part 8: Preprocess config jinja files
+    preprocessing::preprocess_config_files(citadel_root, &citadel_root.join("apps"));
 }
