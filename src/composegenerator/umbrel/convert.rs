@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
 
+use anyhow::{bail, Result};
 use tracing::warn;
 
 use crate::composegenerator::compose::types::{
@@ -110,7 +111,7 @@ pub fn convert_compose(
     compose: ComposeSpecification,
     metadata: Metadata,
     env_vars: &HashMap<String, String>,
-) -> AppYml {
+) -> Result<AppYml> {
     let services = compose.services.unwrap();
     let mut result_services: HashMap<String, Container> = HashMap::new();
     let has_main = services.contains_key("main");
@@ -155,9 +156,9 @@ pub fn convert_compose(
             } else if volume_name.contains("APP_BITCOIN_DATA_DIR") {
                 mounts.as_mut().unwrap().bitcoin = Some(volume_path.to_string());
             } else if volume_name.contains("APP_CORE_LIGHTNING_REST_CERT_DIR") {
-                mounts.as_mut().unwrap().c_lightning = Some(
-                    "Please set this yourself, I could not automatically check this.".to_string(),
-                );
+                bail!("C Lightning mounts are not supported yet");
+            } else {
+                bail!("Unsupported mount found.");
             }
         }
         let mut env: Option<HashMap<String, StringOrIntOrBool>> = Some(HashMap::new());
@@ -362,9 +363,9 @@ pub fn convert_compose(
         };
         result_services.insert(service_name, new_service);
     }
-    AppYml {
+    Ok(AppYml {
         citadel_version: 4,
         metadata: convert_metadata(metadata),
         services: result_services,
-    }
+    })
 }

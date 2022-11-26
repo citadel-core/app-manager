@@ -577,7 +577,7 @@ pub fn convert(dir: &Path) -> Result<()> {
     }
 
     println!("env_vars: {:#?}", env_vars);
-    let citadel_app_yml = convert_compose(compose_yml, metadata, &env_vars);
+    let citadel_app_yml = convert_compose(compose_yml, metadata, &env_vars)?;
     let writer = std::fs::File::create(dir.join("app.yml"))?;
     serde_yaml::to_writer(writer, &citadel_app_yml)?;
     Ok(())
