@@ -2,7 +2,7 @@
 pub mod cli;
 pub mod composegenerator;
 #[cfg(feature = "umbrel")]
-pub mod conch;
+mod conch;
 pub mod constants;
 #[cfg(feature = "dev-tools")]
 pub mod github;
