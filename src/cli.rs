@@ -181,7 +181,7 @@ pub fn convert_dir(citadel_root: &str) {
         eprintln!("Warning: Citadel does not seem to be set up yet!");
     }
 
-    preprocessing::preprocess_apps(citadel_root, &citadel_root.join("apps"));
+    preprocessing::preprocess_apps(citadel_root, &citadel_root.join("apps")).expect("Preprocessing apps failed");
 
     let mut data_dirs = HashMap::new();
     for app in apps {
@@ -484,5 +484,5 @@ pub fn convert_dir(citadel_root: &str) {
     }
 
     // Part 8: Preprocess config jinja files
-    preprocessing::preprocess_config_files(citadel_root, &citadel_root.join("apps"));
+    preprocessing::preprocess_config_files(citadel_root, &citadel_root.join("apps")).expect("Preprocessing config files failed");
 }

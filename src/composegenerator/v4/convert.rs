@@ -307,7 +307,7 @@ fn convert_volumes(
                     bail!("App defines a mount, but does not request the mount permission");
                 }
                 if let StringOrMap::String(string) = value {
-                    service.volumes.push(format!("${{CITADEL_APP_DATA}}/{}/${{APP_{}_DATA_DIR}}:{}", key, key.to_uppercase().replace("-", "_"), string));
+                    service.volumes.push(format!("${{CITADEL_APP_DATA}}/{}/${{APP_{}_DATA_DIR}}:{}", key, key.to_uppercase().replace('-', "_"), string));
                 } else {
                     bail!("Mounts must be a map");
                 }

@@ -1,8 +1,10 @@
 use std::{collections::HashMap, io::Read, path::Path};
 
+use anyhow::Result;
+
 use super::{tera, umbrel::convert, UserJson};
 
-pub fn preprocess_apps(citadel_root: &Path, app_dir: &Path) {
+pub fn preprocess_apps(citadel_root: &Path, app_dir: &Path) -> Result<()> {
     let mut citadel_seed = None;
 
     let citadel_seed_file = citadel_root.join("db").join("citadel-seed").join("seed");
@@ -10,18 +12,20 @@ pub fn preprocess_apps(citadel_root: &Path, app_dir: &Path) {
     if citadel_seed_file.exists() {
         let mut citadel_seed_file = std::fs::File::open(citadel_seed_file).unwrap();
         let mut citadel_seed_str = String::new();
-        citadel_seed_file
-            .read_to_string(&mut citadel_seed_str)
-            .unwrap();
+        citadel_seed_file.read_to_string(&mut citadel_seed_str)?;
         citadel_seed = Some(citadel_seed_str);
     }
 
-    let apps = std::fs::read_dir(app_dir).expect("Error reading apps directory!");
+    let apps = std::fs::read_dir(app_dir)?;
     let apps = apps.filter(|entry| {
-        let entry = entry.as_ref().expect("Error reading app directory!");
-        let path = entry.path();
+        if let Ok(entry) = entry.as_ref() {
+            let path = entry.path();
 
-        path.is_dir()
+            path.is_dir()
+        } else {
+            tracing::error!("{}", entry.as_ref().unwrap_err());
+            false
+        }
     });
 
     let mut env_vars = Vec::new();
@@ -46,16 +50,12 @@ pub fn preprocess_apps(citadel_root: &Path, app_dir: &Path) {
     services.append(&mut vec!["bitcoind".to_string()]);
 
     for app in apps {
-        let app = app.expect("Error reading app directory!");
+        let app = app?;
         let app_id = app.file_name();
         let app_id = app_id.to_str().unwrap();
 
-        if let Err(tera_error) = tera::convert_app_yml(
-            &app.path(),
-            &services,
-            &citadel_seed,
-        ) {
-            eprintln!("Error converting app jinja files: {:?}", tera_error);
+        if let Err(tera_error) = tera::convert_app_yml(&app.path(), &services, &citadel_seed) {
+            tracing::error!("Error converting app jinja files: {:?}", tera_error);
             continue;
         }
 
@@ -66,7 +66,7 @@ pub fn preprocess_apps(citadel_root: &Path, app_dir: &Path) {
                 let umbrel_app_yml = app.path().join("umbrel-app.yml");
                 if umbrel_app_yml.exists() {
                     if let Err(convert_error) = convert(&app.path()) {
-                        eprintln!(
+                        tracing::error!(
                             "Error converting Umbrel app to Citadel app: {:?}",
                             convert_error
                         );
@@ -84,28 +84,32 @@ pub fn preprocess_apps(citadel_root: &Path, app_dir: &Path) {
             }
         }
     }
+
+    Ok(())
 }
 
-pub fn preprocess_config_files(citadel_root: &Path, app_dir: &Path) {
+pub fn preprocess_config_files(citadel_root: &Path, app_dir: &Path) -> Result<()> {
     let mut citadel_seed = None;
 
     let citadel_seed_file = citadel_root.join("db").join("citadel-seed").join("seed");
 
     if citadel_seed_file.exists() {
-        let mut citadel_seed_file = std::fs::File::open(citadel_seed_file).unwrap();
+        let mut citadel_seed_file = std::fs::File::open(citadel_seed_file)?;
         let mut citadel_seed_str = String::new();
-        citadel_seed_file
-            .read_to_string(&mut citadel_seed_str)
-            .unwrap();
+        citadel_seed_file.read_to_string(&mut citadel_seed_str)?;
         citadel_seed = Some(citadel_seed_str);
     }
 
-    let apps = std::fs::read_dir(app_dir).expect("Error reading apps directory!");
+    let apps = std::fs::read_dir(app_dir)?;
     let apps = apps.filter(|entry| {
-        let entry = entry.as_ref().expect("Error reading app directory!");
-        let path = entry.path();
+        if let Ok(entry) = entry.as_ref() {
+            let path = entry.path();
 
-        path.is_dir()
+            path.is_dir()
+        } else {
+            tracing::error!("{}", entry.as_ref().unwrap_err());
+            false
+        }
     });
 
     let mut env_vars = Vec::new();
@@ -143,9 +147,7 @@ pub fn preprocess_config_files(citadel_root: &Path, app_dir: &Path) {
         .collect();
 
     for app in apps {
-        let app = app.expect("Error reading app directory!");
-        let app_id = app.file_name();
-        let app_id = app_id.to_str().unwrap();
+        let app = app?;
 
         if let Err(tera_error) = tera::convert_app_config_files(
             &app.path(),
@@ -157,4 +159,6 @@ pub fn preprocess_config_files(citadel_root: &Path, app_dir: &Path) {
             continue;
         }
     }
+
+    Ok(())
 }

@@ -285,7 +285,7 @@ pub fn list_updates(citadel_root: &str) -> Result<()> {
                     }
                     let subdir_path = tmp_dir.path().join(subdir);
                     all_store_updatable_apps.retain(|v| subdir_path.join(v).exists());
-                    preprocess_apps(citadel_root, &subdir_path);
+                    preprocess_apps(citadel_root, &subdir_path)?;
                     for app_id in all_store_updatable_apps {
                         let app_dir = subdir_path.join(&app_id);
                         let app_yml = app_dir.join("app.yml");

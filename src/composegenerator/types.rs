@@ -46,6 +46,7 @@ pub struct OutputMetadata {
     /// The path the "Open" link on the dashboard should lead to
     #[serde(skip_serializing_if = "Option::is_none")]
     pub path: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     /// The app's default username
     pub default_username: Option<String>,
     /// The app's default password. Can also be $APP_SEED for a random password

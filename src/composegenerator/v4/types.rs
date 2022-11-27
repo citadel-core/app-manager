@@ -35,6 +35,7 @@ pub enum PortPriority {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
+#[serde(untagged)]
 pub enum StringOrMap {
     String(String),
     Map(HashMap<String, String>),
@@ -117,6 +118,7 @@ pub struct InputMetadata {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub path: Option<String>,
     /// The app's default username
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub default_username: Option<String>,
     /// The app's default password. Can also be $APP_SEED for a random password
     pub default_password: Option<String>,

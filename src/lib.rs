@@ -2,6 +2,7 @@
 pub mod cli;
 pub mod composegenerator;
 #[cfg(feature = "umbrel")]
+#[allow(unused_variables)]
 mod conch;
 pub mod constants;
 #[cfg(feature = "dev-tools")]
