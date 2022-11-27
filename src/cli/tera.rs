@@ -4,6 +4,7 @@ use std::{
     path::Path,
 };
 
+use rand::RngCore;
 use tera::Tera;
 
 use crate::{
@@ -15,6 +16,31 @@ use crate::{
 };
 
 use anyhow::Result;
+use sha1::Digest;
+
+// Creates a S2K hash like used by Tor
+fn tor_hash(input: &str, salt: [u8; 8]) -> String {
+    let mut bytes = Vec::new();
+    bytes.extend_from_slice(&salt);
+    bytes.extend_from_slice(input.as_bytes());
+    let mut hash = sha1::Sha1::new();
+    while bytes.len() < 0x10000 {
+        bytes.extend_from_slice(&salt);
+        bytes.extend_from_slice(input.as_bytes());
+    }
+    bytes.truncate(0x10000);
+    hash.update(&bytes);
+    let hash = hash.finalize();
+    let mut hash_str = String::new();
+    for byte in hash {
+        hash_str.push_str(&format!("{:02X}", byte));
+    }
+    format!(
+        "16:{}60{}",
+        hex::encode(salt).to_uppercase(),
+        hash_str.to_uppercase()
+    )
+}
 
 pub fn convert_app_yml(
     app_path: &Path,
@@ -68,6 +94,19 @@ fn convert_app_yml_internal(
                 format!("app-{}-{}", app_id.replace('-', "_"), identifier).as_str(),
             ))
             .expect("Failed to serialize value"))
+        },
+    );
+    tera.register_filter(
+        "tor_hash",
+        |val: &tera::Value,
+         _args: &HashMap<String, tera::Value>|
+         -> Result<tera::Value, tera::Error> {
+            let Some(input) = val.as_str() else {
+            return Err(tera::Error::msg("Identifier must be a string"));
+        };
+            let mut salt = [0u8; 8];
+            rand::thread_rng().fill_bytes(&mut salt);
+            Ok(tera::to_value(tor_hash(input, salt)).expect("Failed to serialize value"))
         },
     );
     let tmpl_result = tera.render_str(tmpl.as_str(), &context);
@@ -141,6 +180,19 @@ fn convert_config_template(
             .expect("Failed to serialize value"))
         },
     );
+    tera.register_filter(
+        "tor_hash",
+        |val: &tera::Value,
+         _args: &HashMap<String, tera::Value>|
+         -> Result<tera::Value, tera::Error> {
+            let Some(input) = val.as_str() else {
+            return Err(tera::Error::msg("Identifier must be a string"));
+        };
+            let mut salt = [0u8; 8];
+            rand::thread_rng().fill_bytes(&mut salt);
+            Ok(tera::to_value(tor_hash(input, salt)).expect("Failed to serialize value"))
+        },
+    );
     let tmpl_result = tera.render_str(tmpl.as_str(), &context);
     if let Err(e) = tmpl_result {
         eprintln!("Error processing template: {}", e);
@@ -199,4 +251,17 @@ pub fn convert_app_config_files(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod test {
+    use super::tor_hash;
+
+    #[test]
+    fn hash_matches_tor() {
+        assert_eq!(
+            tor_hash("test123", [0x3E, 0x6B, 0xF3, 0xDC, 0xEC, 0x50, 0xFE, 0x51]),
+            "16:3E6BF3DCEC50FE5160DBD0C3A9132DB0118AFA5104FE8DA29ADC20A65E"
+        );
+    }
 }
