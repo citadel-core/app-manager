@@ -1,6 +1,6 @@
 use std::{
     collections::HashMap,
-    io::{Error, Read, Write},
+    io::{Read, Write},
     path::Path,
 };
 
@@ -64,7 +64,7 @@ fn convert_app_yml_internal(
     app_id: &str,
     services: &[String],
     citadel_seed: &str,
-) -> Result<(), Error> {
+) -> Result<()> {
     let mut context = tera::Context::new();
     context.insert("services", services);
     context.insert("app_name", app_id);
@@ -111,14 +111,11 @@ fn convert_app_yml_internal(
     );
     let tmpl_result = tera.render_str(tmpl.as_str(), &context);
     if let Err(e) = tmpl_result {
-        eprintln!("Error processing template: {}", e);
-        return Err(Error::new(
-            std::io::ErrorKind::Other,
-            "Error parsing template",
-        ));
+        bail!("Error processing template {}: {}", jinja_file.display(), e);
     }
     let mut writer = std::fs::File::create(jinja_file.to_path_buf().with_extension(""))?;
-    writer.write_all(tmpl_result.unwrap().as_bytes())
+    writer.write_all(tmpl_result.unwrap().as_bytes())?;
+    Ok(())
 }
 
 fn convert_config_template(
