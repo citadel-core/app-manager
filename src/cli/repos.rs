@@ -127,17 +127,17 @@ pub fn download_apps(citadel_root: &str) -> Result<()> {
         let app_store_yml = tmp_dir.path().join("app-store.yml");
         let app_store_yml = std::fs::File::open(app_store_yml);
         let Ok(app_store_yml) = app_store_yml else {
-            eprintln!("No app-store.yml found in {}", source.repo);
+            tracing::error!("No app-store.yml found in {}", source.repo);
             continue;
         };
         let app_store = serde_yaml::from_reader::<File, serde_yaml::Value>(app_store_yml);
         let Ok(app_store) = app_store else {
-            eprintln!("Failed to load app-store.yml in {}", source.repo);
+            tracing::error!("Failed to load app-store.yml in {}", source.repo);
             continue;
         };
         let app_store_version = app_store.get("store_version");
         if app_store_version.is_none() || !app_store_version.unwrap().is_u64() {
-            eprintln!("App store version not defined.");
+            tracing::error!("App store version in {} not defined", source.repo);
             continue;
         }
         let app_store_version = app_store_version.unwrap().as_u64().unwrap();
@@ -197,7 +197,7 @@ pub fn download_apps(citadel_root: &str) -> Result<()> {
                 stores.push(out_app_store);
             }
             _ => {
-                eprintln!("Unknown app store version: {}", app_store_version);
+                tracing::error!("Unknown app store version in {}: {}", source.repo, app_store_version);
                 continue;
             }
         }
@@ -307,7 +307,7 @@ pub fn list_updates(citadel_root: &str) -> Result<()> {
                     }
                 }
                 _ => {
-                    eprintln!("Unknown app store version: {}", app_store_version);
+                    tracing::error!("Unknown app store version in {}: {}", store.repo, app_store_version);
                     continue;
                 }
             }
@@ -351,17 +351,17 @@ pub fn download_app(citadel_root: &str, app: &str) -> Result<()> {
         1 => {
             let app_store = serde_yaml::from_value::<AppStoreV1>(app_store);
             let Ok(app_store) = app_store else {
-                eprintln!("Failed to load app-store.yml in {}", app_src.repo);
+                tracing::error!("Failed to load app-store.yml in {}", app_src.repo);
                 return Ok(());
             };
             let Some(subdir) = get_subdir(&app_store) else {
-                    eprintln!("No compatible version found for {}", app_src.repo);
+                tracing::error!("No compatible version found for {}", app_src.repo);
                     return Ok(());
                 };
             // Check if app exists in store
             let app_dir = tmp_dir.path().join(subdir).join(app);
             if !app_dir.exists() {
-                eprintln!("App {} not present in {} anymore", app, app_src.repo);
+                tracing::error!("App {} not present in {} anymore", app, app_src.repo);
                 return Ok(());
             }
 
@@ -382,7 +382,7 @@ pub fn download_app(citadel_root: &str, app: &str) -> Result<()> {
             )?;
         }
         _ => {
-            eprintln!("Unknown app store version: {}", app_store_version);
+            tracing::error!("Unknown app store version in {}: {}", app_src.repo, app_store_version);
             return Ok(());
         }
     }
@@ -525,7 +525,7 @@ pub fn download_new_apps(citadel_root: &str) -> Result<()> {
                     .extend(new_apps.iter().map(|(k, v)| (k.clone(), v.clone())));
             }
             _ => {
-                eprintln!("Unknown app store version: {}", app_store_version);
+                tracing::error!("Unknown app store version in {}: {}", source.repo, app_store_version);
                 continue;
             }
         }

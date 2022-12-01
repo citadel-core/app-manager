@@ -62,10 +62,6 @@ pub fn convert(dir: &Path) -> Result<()> {
         .ok_or_else(|| anyhow::Error::msg("Services is not a mapping"))?;
     for (_, service) in services {
         let keys = service.as_mapping().unwrap().keys();
-        /*if keys.any(|k| !ALLOWED_KEYS_FOR_UMBREL_APPS.contains(&k.as_str().unwrap())) {
-            eprintln!("Unsupported keys in docker-compose.yml: {:?}", keys.find(|k| !ALLOWED_KEYS_FOR_UMBREL_APPS.contains(&k.as_str().unwrap())));
-            bail!("Unsupported key in docker-compose.yml");
-        }*/
         let unsupported_keys: _ = keys
             .filter(|k| !ALLOWED_KEYS_FOR_UMBREL_APPS.contains(&k.as_str().unwrap()))
             .collect::<Vec<&serde_yaml::Value>>();
@@ -80,7 +76,7 @@ pub fn convert(dir: &Path) -> Result<()> {
                 // Ignore
                 continue;
             }
-            eprintln!(
+            tracing::error!(
                 "Unsupported keys in docker-compose.yml: {:?}",
                 unsupported_keys
             );

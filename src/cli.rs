@@ -178,7 +178,7 @@ pub fn convert_dir(citadel_root: &str) {
     };
 
     if citadel_seed.is_none() {
-        eprintln!("Warning: Citadel does not seem to be set up yet!");
+        tracing::warn!("Citadel does not seem to be set up yet!");
     }
 
     preprocessing::preprocess_apps(citadel_root, &citadel_root.join("apps")).expect("Preprocessing apps failed");
@@ -192,7 +192,7 @@ pub fn convert_dir(citadel_root: &str) {
         let app_yml = std::fs::File::open(app_yml).expect("Failed to open app.yml file!");
         let app_yml = load_config_as_v4(app_yml, &Some(&services.to_vec()));
         let Ok(app_yml) = app_yml else {
-            eprintln!("Error processing app.yml: {}", app_yml.unwrap_err());
+            tracing::error!("Error processing app.yml: {}", app_yml.unwrap_err());
             continue;
         };
 
@@ -421,7 +421,7 @@ pub fn convert_dir(citadel_root: &str) {
                 std::fs::remove_file(docker_compose_yml_path)
                     .expect("Error deleting docker-compose.yml!");
             }
-            eprintln!(
+            tracing::error!(
                 "Error converting app.yml for app {}: {}",
                 app_id,
                 conversion_result.unwrap_err()

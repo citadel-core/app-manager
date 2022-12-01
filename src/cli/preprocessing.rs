@@ -36,7 +36,7 @@ pub fn preprocess_apps(citadel_root: &Path, app_dir: &Path) -> Result<()> {
     }
 
     if env_vars.is_empty() && citadel_seed.is_none() {
-        eprintln!("Warning: Citadel does not seem to be set up yet!");
+        tracing::warn!("Citadel does not seem to be set up yet!");
     }
 
     let mut services = Vec::<String>::new();
@@ -73,13 +73,13 @@ pub fn preprocess_apps(citadel_root: &Path, app_dir: &Path) -> Result<()> {
                         continue;
                     }
                 } else {
-                    eprintln!("Warning: App {} does not have an app.yml file!", app_id);
+                    tracing::warn!("App {} does not have an app.yml file!", app_id);
                     continue;
                 }
             }
             #[cfg(not(feature = "umbrel"))]
             {
-                eprintln!("Warning: App {} does not have an app.yml file!", app_id);
+                tracing::warn!("App {} does not have an app.yml file!", app_id);
                 continue;
             }
         }
@@ -120,7 +120,7 @@ pub fn preprocess_config_files(citadel_root: &Path, app_dir: &Path) -> Result<()
     }
 
     if env_vars.is_empty() && citadel_seed.is_none() {
-        eprintln!("Warning: Citadel does not seem to be set up yet!");
+        tracing::warn!("Citadel does not seem to be set up yet!");
     }
 
     let mut services = Vec::<String>::new();
@@ -140,7 +140,7 @@ pub fn preprocess_config_files(citadel_root: &Path, app_dir: &Path) -> Result<()
             if let Ok((key, value)) = result {
                 Some((key, value))
             } else {
-                eprintln!("Warning: Failed to parse env var: {:?}", result);
+                tracing::warn!("Failed to parse env var: {:?}", result);
                 None
             }
         })
@@ -155,7 +155,7 @@ pub fn preprocess_config_files(citadel_root: &Path, app_dir: &Path) -> Result<()
             &citadel_seed,
             &Some(env_vars.clone()),
         ) {
-            eprintln!("Error converting app jinja files: {:?}", tera_error);
+            tracing::error!("Error converting app jinja files for {}: {:?}", app.path().display(), tera_error);
             continue;
         }
     }
