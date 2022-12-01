@@ -15,7 +15,7 @@ use crate::{
     utils::flatten,
 };
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use sha1::Digest;
 
 // Creates a S2K hash like used by Tor
@@ -129,7 +129,7 @@ fn convert_config_template(
     services: &[String],
     env_vars: &HashMap<String, String>,
     citadel_seed: &str,
-) -> Result<(), Error> {
+) -> Result<()> {
     let output_file = jinja_file.with_extension("");
     let mut context = tera::Context::new();
     context.insert("services", &services);
@@ -195,14 +195,11 @@ fn convert_config_template(
     );
     let tmpl_result = tera.render_str(tmpl.as_str(), &context);
     if let Err(e) = tmpl_result {
-        eprintln!("Error processing template: {}", e);
-        return Err(Error::new(
-            std::io::ErrorKind::Other,
-            "Error parsing template",
-        ));
+        bail!("Error processing template {}: {}", jinja_file.display(), e);
     }
     let mut writer = std::fs::File::create(output_file)?;
-    writer.write_all(tmpl_result.unwrap().as_bytes())
+    writer.write_all(tmpl_result.unwrap().as_bytes())?;
+    Ok(())
 }
 
 pub fn convert_app_config_files(
@@ -210,23 +207,19 @@ pub fn convert_app_config_files(
     services: &[String],
     citadel_seed: &Option<String>,
     env_vars: &Option<HashMap<String, String>>,
-) -> Result<(), Error> {
+) -> Result<()> {
     if citadel_seed.is_some() && env_vars.is_some() {
         let citadel_seed = citadel_seed.as_ref().unwrap();
         let env_vars = env_vars.as_ref().unwrap();
 
         let app_yml = app_path.join("app.yml");
         if !app_yml.exists() {
-            return Err(Error::new(std::io::ErrorKind::Other, "app.yml not found"));
+            bail!("app.yml not found in {}", app_path.display());
         }
         let app_yml = std::fs::File::open(app_yml)?;
         let app_yml = load_config_as_v4(app_yml, &Some(&services.to_vec()));
         if let Err(e) = app_yml {
-            eprintln!("Error processing app.yml: {}", e);
-            return Err(Error::new(
-                std::io::ErrorKind::Other,
-                "Error parsing app.yml",
-            ));
+            bail!("Error processing app.yml {}: {}", app_path.join("app.yml").display(), e);
         }
         let app_yml = app_yml.unwrap();
         let app_version = app_yml.metadata.version;
