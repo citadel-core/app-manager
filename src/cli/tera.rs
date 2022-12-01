@@ -10,7 +10,7 @@ use tera::Tera;
 use crate::{
     composegenerator::{
         load_config_as_v4,
-        v4::{permissions::is_allowed_by_permissions, utils::derive_entropy},
+        v4::{permissions::{is_allowed_by_permissions, ALWAYS_ALLOWED_ENV_VARS}, utils::derive_entropy},
     },
     utils::flatten,
 };
@@ -45,6 +45,7 @@ fn tor_hash(input: &str, salt: [u8; 8]) -> String {
 pub fn convert_app_yml(
     app_path: &Path,
     services: &[String],
+    env_vars: &HashMap<String, String>,
     citadel_seed: &Option<String>,
 ) -> Result<()> {
     let app_yml_jinja = app_path.to_path_buf().join("app.yml.jinja");
@@ -53,6 +54,7 @@ pub fn convert_app_yml(
             &app_yml_jinja,
             app_path.file_name().unwrap().to_str().unwrap(),
             services,
+            env_vars,
             citadel_seed.as_ref().unwrap(),
         )?;
     }
@@ -63,6 +65,7 @@ fn convert_app_yml_internal(
     jinja_file: &Path,
     app_id: &str,
     services: &[String],
+    env_vars: &HashMap<String, String>,
     citadel_seed: &str,
 ) -> Result<()> {
     let mut context = tera::Context::new();
@@ -73,6 +76,12 @@ fn convert_app_yml_internal(
     let mut tera = Tera::default();
     let citadel_seed = citadel_seed.to_string();
     let app_id = app_id.to_string();
+    for (key, val) in env_vars {
+        // We can't know the permissions at this stage, so we only allow the env vars here that are always allowed
+        if ALWAYS_ALLOWED_ENV_VARS.contains(&key.as_str()) {
+            context.insert(key, &val);
+        }
+    }
     tera.register_function(
         "derive_entropy",
         move |args: &HashMap<String, serde_json::Value>| -> Result<tera::Value, tera::Error> {

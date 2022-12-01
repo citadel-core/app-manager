@@ -286,6 +286,27 @@ fn convert_volumes(
                 }
             }
 
+            if let Some(shared_data_mounts) = &mounts.get("shared_data") {
+                if let StringOrMap::Map(data_mounts) = shared_data_mounts {
+                    for (host_path, container_path) in data_mounts {
+                        if host_path.contains("..") {
+                            bail!("A data dir to mount is not allowed to contain '..'");
+                        }
+                        let mount_host_dir: String = if !host_path.starts_with('/') {
+                            "/".to_owned() + host_path
+                        } else {
+                            host_path.clone()
+                        };
+                        service.volumes.push(format!(
+                            "${{APP_DATA_DIR}}{}:{}",
+                            mount_host_dir, container_path
+                        ));
+                    }
+                } else {
+                    bail!("Data mounts must be a map");
+                }
+            }
+
             if let Some(bitcoin_mount) = mounts.get("bitcoin") {
                 if !permissions.contains(&"bitcoind".to_string()) {
                     bail!("bitcoin mount defined by container without Bitcoin permissions",);
@@ -300,11 +321,11 @@ fn convert_volumes(
             }
 
             for (key, value) in mounts {
-                if key == "data" || key == "bitcoin" {
+                if key == "data" || key == "bitcoin" || key == "shared_data" {
                     continue;
                 }
                 if !permissions.contains(key) {
-                    bail!("App defines a mount, but does not request the mount permission");
+                    bail!("App defines a mount for {}, but does not request that permission", key);
                 }
                 if let StringOrMap::String(string) = value {
                     service.volumes.push(format!("${{CITADEL_APP_DATA}}/{}/${{APP_{}_DATA_DIR}}:{}", key, key.to_uppercase().replace('-', "_"), string));

@@ -17,7 +17,7 @@ pub const ELECTRUM_ENV_VARS: [&str; 2] = ["ELECTRUM_IP", "ELECTRUM_PORT"];
 
 pub const C_LIGHTNING_ENV_VARS: [&str; 1] = ["C_LIGHTNING_IP"];
 
-pub const ALWAYS_ALLOWED_ENV_VARS: [&str; 11] = [
+pub const ALWAYS_ALLOWED_ENV_VARS: [&str; 12] = [
     "TOR_PROXY_IP",
     "TOR_PROXY_PORT",
     "APP_DOMAIN",
@@ -29,6 +29,7 @@ pub const ALWAYS_ALLOWED_ENV_VARS: [&str; 11] = [
     "APP_SEED_3",
     "APP_SEED_4",
     "APP_SEED_5",
+    "DEVICE_HOSTNAME",
 ];
 
 pub fn is_allowed_by_permissions(app_id: &str, env_var: &str, permissions: &[String]) -> bool {

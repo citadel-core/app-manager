@@ -28,11 +28,18 @@ pub fn preprocess_apps(citadel_root: &Path, app_dir: &Path) -> Result<()> {
         }
     });
 
-    let mut env_vars = Vec::new();
+    let mut env_vars = HashMap::new();
 
     #[allow(deprecated)]
     if let Ok(dot_env) = dotenv::from_filename_iter(citadel_root.join(".env")) {
-        env_vars = dot_env.collect();
+        env_vars = HashMap::from_iter(dot_env.filter_map(|res| {
+            if let Ok(res) = res {
+                Some(res)
+            } else {
+                tracing::error!("{}", res.unwrap_err());
+                None
+            }
+        }));
     }
 
     if env_vars.is_empty() && citadel_seed.is_none() {
@@ -54,7 +61,7 @@ pub fn preprocess_apps(citadel_root: &Path, app_dir: &Path) -> Result<()> {
         let app_id = app.file_name();
         let app_id = app_id.to_str().unwrap();
 
-        if let Err(tera_error) = tera::convert_app_yml(&app.path(), &services, &citadel_seed) {
+        if let Err(tera_error) = tera::convert_app_yml(&app.path(), &services, &env_vars, &citadel_seed) {
             tracing::error!("Error converting app jinja files: {:?}", tera_error);
             continue;
         }

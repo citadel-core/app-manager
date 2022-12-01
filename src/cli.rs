@@ -189,7 +189,10 @@ pub fn convert_dir(citadel_root: &str) {
         let app_id = app.file_name();
         let app_id = app_id.to_str().unwrap();
         let app_yml = app.path().join("app.yml");
-        let app_yml = std::fs::File::open(app_yml).expect("Failed to open app.yml file!");
+        let Ok(app_yml) = std::fs::File::open(app_yml) else {
+            tracing::error!("Missing app.yml for app {}", app_id);
+            continue;
+        };
         let app_yml = load_config_as_v4(app_yml, &Some(&services.to_vec()));
         let Ok(app_yml) = app_yml else {
             tracing::error!("Error processing app.yml: {}", app_yml.unwrap_err());
