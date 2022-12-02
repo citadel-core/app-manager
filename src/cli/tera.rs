@@ -127,6 +127,7 @@ fn convert_app_yml_internal(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn convert_config_template(
     jinja_file: &Path,
     app_id: &str,
@@ -135,6 +136,7 @@ fn convert_config_template(
     services: &[String],
     env_vars: &HashMap<String, String>,
     citadel_seed: &str,
+    tor_dir: &Path,
 ) -> Result<()> {
     let output_file = jinja_file.with_extension("");
     let mut context = tera::Context::new();
@@ -157,6 +159,44 @@ fn convert_config_template(
         );
     }
     context.insert("APP_VERSION", app_version);
+
+    if tor_dir.is_dir() {
+        let subdirs = std::fs::read_dir(tor_dir)?.filter_map(|dir| {
+            if let Ok(dir) = dir {
+                let path = dir.path();
+                if path.is_dir() {
+                    Some(path)
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        });
+        let app_name = format!("app-{}", app_id);
+        let app_prefix = format!("app-{}-", app_id);
+        for dir in subdirs {
+            let dir_name = dir.file_name().unwrap().to_str().unwrap();
+            if dir_name != app_name && !dir_name.starts_with(&app_prefix) {
+                continue;
+            }
+            let hostname_file = dir.join("hostname");
+            let mut hostname = "notyetgenerated.onion".to_string();
+            if hostname_file.exists() {
+                let mut hostname_file = std::fs::File::open(hostname_file)?;
+                hostname_file.read_to_string(&mut hostname)?;
+            }
+            context.insert(
+                if dir_name == app_name {
+                    "APP_HIDDEN_SERVICE".to_string()
+                } else {
+                    format!("APP_HIDDEN_SERVICE_{}", &dir_name[app_prefix.len()..].to_uppercase().replace('-', "_"))
+                },
+                &hostname.trim(),
+            );
+        }
+
+    }
 
     let mut tmpl = String::new();
     std::fs::File::open(jinja_file)?.read_to_string(&mut tmpl)?;
@@ -213,6 +253,7 @@ pub fn convert_app_config_files(
     services: &[String],
     citadel_seed: &Option<String>,
     env_vars: &Option<HashMap<String, String>>,
+    tor_dir: &Path,
 ) -> Result<()> {
     if citadel_seed.is_some() && env_vars.is_some() {
         let citadel_seed = citadel_seed.as_ref().unwrap();
@@ -245,6 +286,7 @@ pub fn convert_app_config_files(
                 services,
                 env_vars,
                 citadel_seed,
+                tor_dir
             )?;
         }
     }

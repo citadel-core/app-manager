@@ -99,6 +99,7 @@ pub fn preprocess_config_files(citadel_root: &Path, app_dir: &Path) -> Result<()
     let mut citadel_seed = None;
 
     let citadel_seed_file = citadel_root.join("db").join("citadel-seed").join("seed");
+    let tor_dir = citadel_root.join("tor").join("data");
 
     if citadel_seed_file.exists() {
         let mut citadel_seed_file = std::fs::File::open(citadel_seed_file)?;
@@ -161,6 +162,7 @@ pub fn preprocess_config_files(citadel_root: &Path, app_dir: &Path) -> Result<()
             &services,
             &citadel_seed,
             &Some(env_vars.clone()),
+            &tor_dir,
         ) {
             tracing::error!("Error converting app jinja files for {}: {:?}", app.path().display(), tera_error);
             continue;
