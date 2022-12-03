@@ -200,7 +200,7 @@ pub fn convert_dir(citadel_root: &str) {
         };
 
         //Part 2: IP & Port assignment, also save data dirs
-        let main_container = get_main_container(&app_yml).unwrap_or_else(|_| "main".to_string());
+        let main_container = get_main_container(&app_yml.services).unwrap_or_else(|_| "main".to_string());
         let has_service = app_yml.services.contains_key("service");
         for (service_name, service) in app_yml.services {
             let ip_name = format!(
@@ -345,7 +345,7 @@ pub fn convert_dir(citadel_root: &str) {
             }
         }
         for (key, value) in &data_dirs {
-            let to_append = format!("{}_DATA_DIR={}", key.to_uppercase(), value);
+            let to_append = format!("{}_DATA_DIR={}", key.to_uppercase().replace('-', "_"), value);
             if !env_string.contains(&to_append) {
                 env_string.push_str(&(to_append + "\n"));
             }

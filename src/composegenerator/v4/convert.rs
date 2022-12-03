@@ -16,9 +16,14 @@ use crate::{
     utils::{find_env_vars, flatten},
 };
 use std::collections::{BTreeMap, HashMap};
+use lazy_static::lazy_static;
 
 use crate::composegenerator::types::ResultYml;
 use anyhow::{bail, Result};
+
+lazy_static! {
+    static ref NET_PERMISSION: String = "network".to_string();
+}
 
 fn get_main_port(
     containers: &HashMap<String, types::Container>,
@@ -182,9 +187,9 @@ fn define_ip_addresses(
     Ok(())
 }
 
-fn validate_service(
+fn validate_service<'a>(
     app_name: &str,
-    permissions: &mut Vec<String>,
+    permissions: &mut Vec<&'a String>,
     service: &types::Container,
     replace_env_vars: &HashMap<String, String>,
     result: &mut Service,
@@ -231,10 +236,10 @@ fn validate_service(
         }
     }
     if service.network_mode.is_some() {
-        if !permissions.contains(&"network".to_string()) {
+        if !permissions.contains(&&NET_PERMISSION.to_string()) {
             // To preserve compatibility, this is only a warning, but we add the permission to the output
             tracing::warn!("App defines network-mode, but does not request the network permission");
-            permissions.push("network".to_string());
+            permissions.push(&NET_PERMISSION);
         }
         result.network_mode = service.network_mode.to_owned();
     }
@@ -243,7 +248,7 @@ fn validate_service(
         for cap in caps {
             match cap.to_lowercase().as_str() {
                 "cap-net-raw" | "cap-net-admin" => {
-                    if !permissions.contains(&"network".to_string()) {
+                    if !permissions.contains(&&"network".to_string()) {
                         bail!("App defines a network capability, but does not request the network permission");
                     }
                     cap_add.push(cap.to_owned());
@@ -256,9 +261,9 @@ fn validate_service(
     Ok(())
 }
 
-fn convert_volumes(
+fn convert_volumes<'a>(
     containers: &HashMap<String, types::Container>,
-    permissions: &[String],
+    permissions: &[&'a String],
     output: &mut ComposeSpecification,
 ) -> Result<()> {
     let services = output.services.as_mut().unwrap();
@@ -308,7 +313,7 @@ fn convert_volumes(
             }
 
             if let Some(bitcoin_mount) = mounts.get("bitcoin") {
-                if !permissions.contains(&"bitcoind".to_string()) {
+                if !permissions.contains(&&"bitcoind".to_string()) {
                     bail!("bitcoin mount defined by container without Bitcoin permissions",);
                 }
                 if let StringOrMap::String(bitcoin_path) = bitcoin_mount {
@@ -324,7 +329,7 @@ fn convert_volumes(
                 if key == "data" || key == "bitcoin" || key == "shared_data" {
                     continue;
                 }
-                if !permissions.contains(key) {
+                if !permissions.contains(&key) {
                     bail!("App defines a mount for {}, but does not request that permission", key);
                 }
                 if let StringOrMap::String(string) = value {
@@ -504,9 +509,9 @@ pub fn convert_config(
         services: Some(BTreeMap::new()),
     };
     let spec_services = spec.services.get_or_insert(BTreeMap::new());
-    let mut permissions = flatten(app.metadata.permissions.clone());
+    let mut permissions = flatten(&app.metadata.permissions);
 
-    let main_service = get_main_container(&app)?;
+    let main_service = get_main_container(&app.services)?;
     let mut app_port_map: Option<HashMap<String, Vec<PortMapElement>>> = None;
     if let Some(port_map) = port_map {
         if let Some(app_port_map_entry) = port_map.get(app_name) {

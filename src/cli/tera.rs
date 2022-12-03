@@ -10,7 +10,10 @@ use tera::Tera;
 use crate::{
     composegenerator::{
         load_config_as_v4,
-        v4::{permissions::{is_allowed_by_permissions, ALWAYS_ALLOWED_ENV_VARS}, utils::derive_entropy},
+        v4::{
+            permissions::{is_allowed_by_permissions, ALWAYS_ALLOWED_ENV_VARS},
+            utils::{derive_entropy, get_main_container},
+        },
     },
     utils::flatten,
 };
@@ -128,12 +131,13 @@ fn convert_app_yml_internal(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn convert_config_template(
+fn convert_config_template<'a>(
     jinja_file: &Path,
     app_id: &str,
     app_version: &str,
-    permissions: &[String],
+    permissions: &[&'a String],
     services: &[String],
+    services_with_hs: &[String],
     env_vars: &HashMap<String, String>,
     citadel_seed: &str,
     tor_dir: &Path,
@@ -190,12 +194,27 @@ fn convert_config_template(
                 if dir_name == app_name {
                     "APP_HIDDEN_SERVICE".to_string()
                 } else {
-                    format!("APP_HIDDEN_SERVICE_{}", &dir_name[app_prefix.len()..].to_uppercase().replace('-', "_"))
+                    format!(
+                        "APP_HIDDEN_SERVICE_{}",
+                        &dir_name[app_prefix.len()..]
+                            .to_uppercase()
+                            .replace('-', "_")
+                    )
                 },
                 &hostname.trim(),
             );
         }
-
+    } else {
+        context.insert("APP_HIDDEN_SERVICE", "notyetgenerated.onion");
+    }
+    for service in services_with_hs {
+        let key = format!(
+            "APP_HIDDEN_SERVICE_{}",
+            service.to_uppercase().replace('-', "_")
+        );
+        if context.get(&key).is_none() {
+            context.insert(key, "notyetgenerated.onion");
+        }
     }
 
     let mut tmpl = String::new();
@@ -266,16 +285,39 @@ pub fn convert_app_config_files(
         let app_yml = std::fs::File::open(app_yml)?;
         let app_yml = load_config_as_v4(app_yml, &Some(&services.to_vec()));
         if let Err(e) = app_yml {
-            bail!("Error processing app.yml {}: {}", app_path.join("app.yml").display(), e);
+            bail!(
+                "Error processing app.yml {}: {}",
+                app_path.join("app.yml").display(),
+                e
+            );
         }
         let app_yml = app_yml.unwrap();
         let app_version = app_yml.metadata.version;
-        let perms = flatten(app_yml.metadata.permissions);
+        let perms = flatten(&app_yml.metadata.permissions);
 
         let other_jinja_files = std::fs::read_dir(app_path)?
             .filter_map(|entry| entry.ok())
             .filter(|entry| entry.path().extension().unwrap_or_default() == "jinja")
             .map(|entry| entry.path());
+        
+        let main_container = get_main_container(&app_yml.services).unwrap_or_else(|_| "main".to_string());
+        let services_with_hs = app_yml.services.into_iter().filter_map(|(name, service)| {
+            if name == main_container || service.hidden_services.is_none() {
+                None
+            } else {
+                Some((name, service.hidden_services.unwrap()))
+            }
+        });
+        let mut existing_hs = Vec::new();
+        for (container, hs) in services_with_hs {
+            match hs {
+                crate::composegenerator::v4::types::HiddenServices::PortMap(_) => existing_hs.push(container),
+                crate::composegenerator::v4::types::HiddenServices::LayeredMap(map) => {
+                    let mut keys = map.into_keys().collect();
+                    existing_hs.append(&mut keys)
+                },
+            }
+        }
 
         for jinja_file in other_jinja_files {
             convert_config_template(
@@ -284,9 +326,10 @@ pub fn convert_app_config_files(
                 &app_version,
                 &perms,
                 services,
+                &existing_hs,
                 env_vars,
                 citadel_seed,
-                tor_dir
+                tor_dir,
             )?;
         }
     }

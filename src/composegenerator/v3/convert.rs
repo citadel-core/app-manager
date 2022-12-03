@@ -34,7 +34,8 @@ pub fn v3_to_v4(app: AppYmlV3, installed_services: &Option<&Vec<String>>) -> typ
         release_notes: None,
     };
     let mut services = HashMap::<String, types_v4::Container>::with_capacity(app.containers.len());
-    let deps = flatten(app.metadata.dependencies.unwrap_or_default());
+    let deps = app.metadata.dependencies.unwrap_or_default();
+    let deps = flatten(&deps);
     'container_loop: for container in app.containers {
         if let Some(installed_services) = installed_services {
             for dependency in container.requires.clone().unwrap_or_default() {
@@ -79,17 +80,17 @@ pub fn v3_to_v4(app: AppYmlV3, installed_services: &Option<&Vec<String>>) -> typ
         let mut mounts = HashMap::new();
         let requires = container.requires.unwrap_or_default();
         let old_mounts = container.mounts.unwrap_or_default();
-        if deps.contains(&"lnd".to_string()) && !requires.contains(&"c-lightning".to_string()) {
+        if deps.contains(&&"lnd".to_string()) && !requires.contains(&"c-lightning".to_string()) {
             mounts.insert("lnd".to_string(), StringOrMap::String(old_mounts.lnd.unwrap_or_else(|| "/lnd".into())));
         }
-        if deps.contains(&"c-lightning".to_string()) && !requires.contains(&"lnd".to_string()) {
+        if deps.contains(&&"c-lightning".to_string()) && !requires.contains(&"lnd".to_string()) {
             mounts.insert("core-ln".to_string(),
             StringOrMap::String(old_mounts
                     .c_lightning
                     .unwrap_or_else(|| "/c-lightning".into()))
             );
         }
-        if deps.contains(&"bitcoin".to_string()) {
+        if deps.contains(&&"bitcoin".to_string()) {
             mounts.insert("bitcoin".to_string(), StringOrMap::String(old_mounts.bitcoin.unwrap_or_else(|| "/bitcoin".into())));
         }
         let data_mounts = container.data.unwrap_or_default();

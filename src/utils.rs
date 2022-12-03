@@ -84,15 +84,17 @@ mod test_env_vars {
     }
 }
 
-pub fn flatten(perms: Vec<Permissions>) -> Vec<String> {
-    let mut result = Vec::<String>::new();
+pub fn flatten<'a>(perms: &'a Vec<Permissions>) -> Vec<&'a String> {
+    let mut result = Vec::<&'a String>::new();
     for perm in perms {
         match perm {
             Permissions::OneDependency(dependency) => {
                 result.push(dependency);
             }
-            Permissions::AlternativeDependency(mut dependencies) => {
-                result.append(&mut dependencies);
+            Permissions::AlternativeDependency(dependencies) => {
+                for dependency in dependencies {
+                    result.push(dependency);
+                }
             }
         }
     }
@@ -106,28 +108,31 @@ mod test_flatten {
 
     #[test]
     fn handle_empty_properly() {
-        let result = flatten(Vec::<Permissions>::new());
-        assert_eq!(result, Vec::<String>::new());
+        let perms = Vec::<Permissions>::new();
+        let result = flatten(&perms);
+        assert_eq!(result, Vec::<&String>::new());
     }
 
     #[test]
     fn handle_simple_properly() {
-        let result = flatten(vec![
+        let perms = vec![
             Permissions::OneDependency("a".to_string()),
             Permissions::OneDependency("b".to_string()),
-        ]);
-        assert_eq!(result, vec!["a".to_string(), "b".to_string()]);
+        ];
+        let result = flatten(&perms);
+        assert_eq!(result, vec![&"a".to_string(), &"b".to_string()]);
     }
 
     #[test]
     fn handle_alternating_properly() {
-        let result = flatten(vec![
+        let perms = vec![
             Permissions::OneDependency("a".to_string()),
             Permissions::AlternativeDependency(vec!["b".to_string(), "c".to_string()]),
-        ]);
+        ];
+        let result = flatten(&perms);
         assert_eq!(
             result,
-            vec!["a".to_string(), "b".to_string(), "c".to_string()]
+            vec![&"a".to_string(), &"b".to_string(), &"c".to_string()]
         );
     }
 }

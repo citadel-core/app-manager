@@ -18,7 +18,7 @@ pub fn derive_entropy(seed: &str, identifier: &str) -> String {
     hex::encode(result)
 }
 
-pub fn validate_cmd(app_name: &str, command: &Command, permissions: &[String]) -> Result<()> {
+pub fn validate_cmd<'a>(app_name: &str, command: &Command, permissions: &[&'a String]) -> Result<()> {
     match command {
         Command::SimpleCommand(simple_command) => {
             let env_vars = find_env_vars(simple_command);
@@ -56,16 +56,16 @@ pub fn validate_port_map_app(
     >(Object(port_map_app.to_owned()))?)
 }
 
-pub fn get_main_container(spec: &super::types::AppYml) -> Result<String> {
-    if spec.services.len() == 1 {
-        return Ok(spec.services.keys().next().unwrap().clone());
+pub fn get_main_container(services: &HashMap<String, super::types::Container>) -> Result<String> {
+    if services.len() == 1 {
+        return Ok(services.keys().next().unwrap().clone());
     }
 
     let mut main_service_name: Option<String> = Option::<String>::None;
     // We now have a list of services whose dependencies are present
     // And that are mostly validated
     // We can now determine the main container of the app
-    for service_name in spec.services.keys() {
+    for service_name in services.keys() {
         // web is for easier porting from Umbrel and to preserve compatibility with v3
         if service_name == "main" || service_name == "web" {
             main_service_name = Some(service_name.to_string());
