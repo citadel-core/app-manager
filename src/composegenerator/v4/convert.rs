@@ -312,6 +312,18 @@ fn convert_volumes<'a>(
                 }
             }
 
+            if let Some(jwt_pubkey_mount) = mounts.get("jwt-pubkey") {
+                if let StringOrMap::String(jwt_pubkey_mount) = jwt_pubkey_mount {
+                    service.volumes.push(format!(
+                        "jwt-public-key:{}",
+                        jwt_pubkey_mount
+                    ));
+                } else {
+                    bail!("JWT pubkey mount must be a string");
+                }
+
+            }
+
             if let Some(bitcoin_mount) = mounts.get("bitcoin") {
                 if !permissions.contains(&&"bitcoind".to_string()) {
                     bail!("bitcoin mount defined by container without Bitcoin permissions",);
