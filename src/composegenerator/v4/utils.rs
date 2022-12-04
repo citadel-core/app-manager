@@ -56,19 +56,19 @@ pub fn validate_port_map_app(
     >(Object(port_map_app.to_owned()))?)
 }
 
-pub fn get_main_container(services: &HashMap<String, super::types::Container>) -> Result<String> {
+pub fn get_main_container(services: &HashMap<String, super::types::Container>) -> Result<&str> {
     if services.len() == 1 {
-        return Ok(services.keys().next().unwrap().clone());
+        return Ok(services.keys().next().unwrap());
     }
 
-    let mut main_service_name: Option<String> = Option::<String>::None;
+    let mut main_service_name: Option<&String> = Option::<&String>::None;
     // We now have a list of services whose dependencies are present
     // And that are mostly validated
     // We can now determine the main container of the app
     for service_name in services.keys() {
         // web is for easier porting from Umbrel and to preserve compatibility with v3
         if service_name == "main" || service_name == "web" {
-            main_service_name = Some(service_name.to_string());
+            main_service_name = Some(service_name);
             break;
         } else if service_name.starts_with("main") {
             if main_service_name.is_some() {
@@ -79,7 +79,7 @@ pub fn get_main_container(services: &HashMap<String, super::types::Container>) -
                 );
                 bail!("Multiple main containers in app!");
             }
-            main_service_name = Some(service_name.to_string());
+            main_service_name = Some(service_name);
         }
     }
     if let Some(main_name) = main_service_name {

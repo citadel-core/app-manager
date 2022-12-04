@@ -120,7 +120,7 @@ fn main() {
     let args: Cli = Cli::parse();
     match args.command {
         SubCommand::Convert { citadel_root } => {
-            cli::convert_dir(&citadel_root);
+            cli::convert_dir(&citadel_root).expect("Failed to convert");
         }
         #[cfg(feature = "dev-tools")]
         SubCommand::Schema { version } => match version.as_str() {

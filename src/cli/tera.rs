@@ -137,7 +137,7 @@ fn convert_config_template<'a>(
     app_version: &str,
     permissions: &[&'a String],
     services: &[String],
-    services_with_hs: &[String],
+    services_with_hs: &[&String],
     env_vars: &HashMap<String, String>,
     citadel_seed: &str,
     tor_dir: &Path,
@@ -300,12 +300,12 @@ pub fn convert_app_config_files(
             .filter(|entry| entry.path().extension().unwrap_or_default() == "jinja")
             .map(|entry| entry.path());
         
-        let main_container = get_main_container(&app_yml.services).unwrap_or_else(|_| "main".to_string());
-        let services_with_hs = app_yml.services.into_iter().filter_map(|(name, service)| {
+        let main_container = get_main_container(&app_yml.services)?;
+        let services_with_hs = app_yml.services.iter().filter_map(|(name, service)| {
             if name == main_container || service.hidden_services.is_none() {
                 None
             } else {
-                Some((name, service.hidden_services.unwrap()))
+                Some((name, service.hidden_services.as_ref().unwrap()))
             }
         });
         let mut existing_hs = Vec::new();
@@ -313,7 +313,7 @@ pub fn convert_app_config_files(
             match hs {
                 crate::composegenerator::v4::types::HiddenServices::PortMap(_) => existing_hs.push(container),
                 crate::composegenerator::v4::types::HiddenServices::LayeredMap(map) => {
-                    let mut keys = map.into_keys().collect();
+                    let mut keys = map.keys().collect();
                     existing_hs.append(&mut keys)
                 },
             }

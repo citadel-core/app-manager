@@ -15,6 +15,8 @@ use crate::composegenerator::{
     },
 };
 
+use anyhow::Result;
+
 mod preprocessing;
 pub mod repos;
 mod tera;
@@ -36,10 +38,10 @@ struct PortCacheMapEntry {
 type PortCacheMap = HashMap<u16, PortCacheMapEntry>;
 
 static RESERVED_PORTS: [u16; 4] = [
-    80,    // Dashboard
-    433,   // Sometimes used by nginx with some setups
-    443,   // Dashboard SSL
-    8333,  // Bitcoin Core P2P
+    80,   // Dashboard
+    433,  // Sometimes used by nginx with some setups
+    443,  // Dashboard SSL
+    8333, // Bitcoin Core P2P
 ];
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -49,7 +51,7 @@ struct UserJson {
     // We ignore other properties for now because we do not need them
 }
 
-pub fn convert_dir(citadel_root: &str) {
+pub fn convert_dir(citadel_root: &str) -> Result<()> {
     let citadel_root = Path::new(&citadel_root);
     let apps = std::fs::read_dir(citadel_root.join("apps")).expect("Error reading apps directory!");
     let apps = apps.filter(|entry| {
@@ -181,7 +183,8 @@ pub fn convert_dir(citadel_root: &str) {
         tracing::warn!("Citadel does not seem to be set up yet!");
     }
 
-    preprocessing::preprocess_apps(citadel_root, &citadel_root.join("apps")).expect("Preprocessing apps failed");
+    preprocessing::preprocess_apps(citadel_root, &citadel_root.join("apps"))
+        .expect("Preprocessing apps failed");
 
     let mut data_dirs = HashMap::new();
     for app in apps {
@@ -200,9 +203,9 @@ pub fn convert_dir(citadel_root: &str) {
         };
 
         //Part 2: IP & Port assignment, also save data dirs
-        let main_container = get_main_container(&app_yml.services).unwrap_or_else(|_| "main".to_string());
+        let main_container = get_main_container(&app_yml.services)?;
         let has_service = app_yml.services.contains_key("service");
-        for (service_name, service) in app_yml.services {
+        for (service_name, service) in &app_yml.services {
             let ip_name = format!(
                 "APP_{}_{}_IP",
                 app_id.to_uppercase().replace('-', "_"),
@@ -219,7 +222,7 @@ pub fn convert_dir(citadel_root: &str) {
             if let Some(main_port) = service.port {
                 validate_port(
                     app_id,
-                    &service_name,
+                    service_name,
                     main_port,
                     service.port_priority.unwrap_or(PortPriority::Optional),
                     false,
@@ -228,32 +231,32 @@ pub fn convert_dir(citadel_root: &str) {
             } else if main_container == service_name {
                 validate_port(
                     app_id,
-                    &service_name,
+                    service_name,
                     3000,
                     PortPriority::Optional,
                     true,
                     app_yml.metadata.implements.clone(),
                 );
             }
-            if let Some(ports) = service.required_ports {
-                if let Some(tcp_ports) = ports.tcp {
-                    for (host_port, _) in tcp_ports {
+            if let Some(ports) = &service.required_ports {
+                if let Some(tcp_ports) = &ports.tcp {
+                    for host_port in tcp_ports.keys() {
                         validate_port(
                             app_id,
-                            &service_name,
-                            host_port,
+                            service_name,
+                            *host_port,
                             PortPriority::Required,
                             false,
                             app_yml.metadata.implements.clone(),
                         );
                     }
                 }
-                if let Some(udp_ports) = ports.udp {
-                    for (host_port, _) in udp_ports {
+                if let Some(udp_ports) = &ports.udp {
+                    for host_port in udp_ports.keys() {
                         validate_port(
                             app_id,
-                            &service_name,
-                            host_port,
+                            service_name,
+                            *host_port,
                             PortPriority::Required,
                             false,
                             app_yml.metadata.implements.clone(),
@@ -261,7 +264,7 @@ pub fn convert_dir(citadel_root: &str) {
                     }
                 }
             }
-            if let Some(mounts) = service.mounts {
+            if let Some(mounts) = &service.mounts {
                 if let Some(shared_data) = mounts.get("shared_data") {
                     if let StringOrMap::String(_) = shared_data {
                         tracing::warn!(
@@ -345,7 +348,11 @@ pub fn convert_dir(citadel_root: &str) {
             }
         }
         for (key, value) in &data_dirs {
-            let to_append = format!("{}_DATA_DIR={}", key.to_uppercase().replace('-', "_"), value);
+            let to_append = format!(
+                "{}_DATA_DIR={}",
+                key.to_uppercase().replace('-', "_"),
+                value
+            );
             if !env_string.contains(&to_append) {
                 env_string.push_str(&(to_append + "\n"));
             }
@@ -421,8 +428,7 @@ pub fn convert_dir(citadel_root: &str) {
         } else {
             // Delete docker-compose.yml if it exists
             if docker_compose_yml_path.exists() {
-                std::fs::remove_file(docker_compose_yml_path)
-                    .expect("Error deleting docker-compose.yml!");
+                std::fs::remove_file(docker_compose_yml_path)?;
             }
             tracing::error!(
                 "Error converting app.yml for app {}: {}",
@@ -436,56 +442,43 @@ pub fn convert_dir(citadel_root: &str) {
     {
         let app_registry_file = citadel_root.join("apps").join("registry.json");
         let mut app_registry_file =
-            std::fs::File::create(app_registry_file).expect("Error opening registry.json!");
+            std::fs::File::create(app_registry_file)?;
         serde_json::to_writer(&mut app_registry_file, &app_registry)
             .expect("Error writing registry.json!");
         let virtual_apps_file = citadel_root.join("apps").join("virtual-apps.json");
-        let mut virtual_apps_file =
-            std::fs::File::create(virtual_apps_file).expect("Error opening virtual-apps.json!");
-        serde_json::to_writer(&mut virtual_apps_file, &virtual_apps)
-            .expect("Error writing virtual-apps.json!");
+        let mut virtual_apps_file = std::fs::File::create(virtual_apps_file)?;
+        serde_json::to_writer(&mut virtual_apps_file, &virtual_apps)?;
 
         let tor_entries_file = citadel_root.join("tor").join("torrc-apps");
         let tor_entries_file_2 = citadel_root.join("tor").join("torrc-apps-2");
         let tor_entries_file_3 = citadel_root.join("tor").join("torrc-apps-3");
-        let mut tor_entries_file =
-            std::fs::File::create(tor_entries_file).expect("Error opening torrc-apps!");
-        let mut tor_entries_file_2 =
-            std::fs::File::create(tor_entries_file_2).expect("Error opening torrc-apps-2!");
-        let mut tor_entries_file_3 =
-            std::fs::File::create(tor_entries_file_3).expect("Error opening torrc-apps-3!");
+        let mut tor_entries_file = std::fs::File::create(tor_entries_file)?;
+        let mut tor_entries_file_2 = std::fs::File::create(tor_entries_file_2)?;
+        let mut tor_entries_file_3 = std::fs::File::create(tor_entries_file_3)?;
         // Split entries into 3 groups of the same size
         let mut current_file = 1;
 
         for entry in tor_entries {
             if current_file == 1 {
-                tor_entries_file
-                    .write_all(entry.as_bytes())
-                    .expect("Error writing torrc-apps!");
+                tor_entries_file.write_all(entry.as_bytes())?;
                 current_file = 2;
             } else if current_file == 2 {
-                tor_entries_file_2
-                    .write_all(entry.as_bytes())
-                    .expect("Error writing torrc-apps-2!");
+                tor_entries_file_2.write_all(entry.as_bytes())?;
                 current_file = 3;
             } else if current_file == 3 {
-                tor_entries_file_3
-                    .write_all(entry.as_bytes())
-                    .expect("Error writing torrc-apps-3!");
+                tor_entries_file_3.write_all(entry.as_bytes())?;
                 current_file = 1;
             }
         }
         let i2p_entries_dir = citadel_root.join("i2p").join("tunnels.d");
-        std::fs::create_dir_all(i2p_entries_dir.clone())
-            .expect("Error creating i2p tunnels.d directory!");
+        std::fs::create_dir_all(i2p_entries_dir.clone())?;
         let i2p_entries_file = i2p_entries_dir.join("apps.conf");
-        let mut i2p_entries_file =
-            std::fs::File::create(i2p_entries_file).expect("Error opening apps.conf!");
-        i2p_entries_file
-            .write_all(i2p_entries.join("\n").as_bytes())
-            .expect("Error writing apps.conf!");
+        let mut i2p_entries_file = std::fs::File::create(i2p_entries_file)?;
+        i2p_entries_file.write_all(i2p_entries.join("\n").as_bytes())?;
     }
 
     // Part 8: Preprocess config jinja files
-    preprocessing::preprocess_config_files(citadel_root, &citadel_root.join("apps")).expect("Preprocessing config files failed");
+    preprocessing::preprocess_config_files(citadel_root, &citadel_root.join("apps"))?;
+
+    Ok(())
 }

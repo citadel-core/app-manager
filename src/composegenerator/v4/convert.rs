@@ -358,7 +358,7 @@ fn convert_volumes<'a>(
 
 fn get_hidden_services(
     app_name: &str,
-    containers: HashMap<String, types::Container>,
+    containers: &HashMap<String, types::Container>,
     main_container: &str,
     main_port: u16,
     ip_addresses: &HashMap<String, String>,
@@ -451,7 +451,7 @@ fn get_hidden_services(
 
 fn get_i2p_tunnels(
     app_name: &str,
-    containers: HashMap<String, types::Container>,
+    containers: &HashMap<String, types::Container>,
     main_container: &str,
     main_port: u16,
     ip_addresses: &HashMap<String, String>,
@@ -542,7 +542,7 @@ pub fn convert_config(
             app_port_map = Some(entry);
         }
     }
-    let main_port = get_main_port(&app.services, &main_service, &app_port_map)?;
+    let main_port = get_main_port(&app.services, main_service, &app_port_map)?;
 
     // Required for dynamic ports
     let env_var = format!(
@@ -588,16 +588,16 @@ pub fn convert_config(
         )?;
     }
     // We can now finalize the process by parsing some of the remaining values
-    configure_ports(&app.services, &main_service, &mut spec, &app_port_map)?;
+    configure_ports(&app.services, main_service, &mut spec, &app_port_map)?;
 
-    define_ip_addresses(app_name, &app.services, &main_service, &mut spec)?;
+    define_ip_addresses(app_name, &app.services, main_service, &mut spec)?;
 
     convert_volumes(&app.services, &permissions, &mut spec)?;
 
     let mut main_port_host: Option<u16> = None;
     if let Some(converted_map) = app_port_map {
         main_port_host = Some(
-            get_host_port(converted_map.get(&main_service).unwrap(), main_port)
+            get_host_port(converted_map.get(main_service).unwrap(), main_port)
                 .unwrap()
                 .public_port,
         );
@@ -645,12 +645,12 @@ pub fn convert_config(
         spec,
         new_tor_entries: get_hidden_services(
             app_name,
-            app.services.clone(),
-            &main_service,
+            &app.services,
+            main_service,
             main_port,
             &ips,
         ),
-        new_i2p_entries: get_i2p_tunnels(app_name, app.services, &main_service, main_port, &ips),
+        new_i2p_entries: get_i2p_tunnels(app_name, &app.services, main_service, main_port, &ips),
         metadata,
     };
 
