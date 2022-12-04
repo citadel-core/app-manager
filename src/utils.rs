@@ -44,7 +44,15 @@ pub fn find_env_vars(string: &str) -> Vec<&str> {
             // If the env var starts with ${, remove it and the closing }
             // Otherwise, just remove the $
             if matched.starts_with("${") {
-                result.push(&matched[2..matched.len() - 1])
+                let simplified = &matched[2..matched.len() - 1];
+                // Split it at :-, : or -, depending on which of these exist
+                let split = simplified.splitn(2, '-').collect::<Vec<&str>>();
+                let main_var = split[0].split(':').collect::<Vec<&str>>()[0];
+                result.push(main_var);
+                if split.len() > 1 {
+                    let mut env_vars_in_default = find_env_vars(split[1]);
+                    result.append(&mut env_vars_in_default);
+                }
             } else {
                 result.push(&matched[1..matched.len()]);
             };
@@ -56,6 +64,7 @@ pub fn find_env_vars(string: &str) -> Vec<&str> {
 #[cfg(test)]
 mod test_env_vars {
     use crate::utils::find_env_vars;
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn handle_empty_properly() {
@@ -81,6 +90,12 @@ mod test_env_vars {
         let expected = vec!["BITCOIN_IP", "LND_IP", "ANOTHER_THING"];
 
         assert!(expected.iter().all(|item| result.contains(item)));
+    }
+
+    #[test]
+    fn find_vars_with_fallback() {
+        let result = find_env_vars("${DEVICE_HOSTS:-\"Hello world\"} ${OTHER_VAR-\"Hello world\"} ${ANOTHER_VAR:2:1} ${LAST_VAR:-$BYPASS}");
+        assert_eq!(result, vec!["DEVICE_HOSTS", "OTHER_VAR", "ANOTHER_VAR", "LAST_VAR", "BYPASS"]);
     }
 }
 
