@@ -23,7 +23,7 @@ bollard = { version = "0.13.0", optional = true }
 futures-util = { version = "0.3.25", optional = true }
 octocrab = { version = "0.17.0", optional = true }
 semver = { version = "1.0.14", optional = true }
-gitlab = { version = "0.1505.0", optional = true }
+gitlab = { version = "0.1506.0", optional = true }
 url = { version = "2.3.0", optional = true }
 # Only used by the CLI
 clap = { version = "4.0", features = ["derive"], optional = true }

@@ -202,9 +202,9 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "chrono"
-version = "0.4.22"
+version = "0.4.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bfd4d1b31faaa3a89d7934dbded3111da0d2ef28e3ebccdb4f0179f5929d1ef1"
+checksum = "16b0a3d9ed01224b22057780a37bb8c5dbfe1be8ba48678e7bf57ec4b385411f"
 dependencies = [
  "iana-time-zone",
  "js-sys",
@@ -649,9 +649,9 @@ dependencies = [
 
 [[package]]
 name = "gitlab"
-version = "0.1505.0"
+version = "0.1506.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1646a600036ebd7e9642758a1b732b2cc76952616091fc2e98dc09db67eca01a"
+checksum = "2b895ac2f45516d3e9d28834c7555ad4868080de9227e306f9fa7f7c304c45d3"
 dependencies = [
  "async-trait",
  "base64",
