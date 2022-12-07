@@ -13,7 +13,7 @@ serde_json = "1.0"
 regex = "1"
 lazy_static = "1.4"
 hex = "0.4.3"
-hmac-sha256 = "1.1.5"
+hmac-sha256 = "1.1.6"
 anyhow = { version = "1.0.66", features = ["backtrace"] }
 tracing = "0.1.37"
 # Optional dependencies
@@ -23,10 +23,10 @@ bollard = { version = "0.13.0", optional = true }
 futures-util = { version = "0.3.25", optional = true }
 octocrab = { version = "0.17.0", optional = true }
 semver = { version = "1.0.14", optional = true }
-gitlab = { version = "0.1505.0", optional = true }
+gitlab = { version = "0.1506.0", optional = true }
 url = { version = "2.3.0", optional = true }
 # Only used by the CLI
-clap = { version = "3.2", features = ["derive"], optional = true }
+clap = { version = "4.0", features = ["derive"], optional = true }
 tera = { version = "1", default-features = false, optional = true }
 dotenv = { version = "0.15.0", optional = true }
 tempdir = { version = "0.3.7", optional = true }
