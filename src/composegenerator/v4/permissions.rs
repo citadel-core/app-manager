@@ -29,7 +29,7 @@ pub const ALWAYS_ALLOWED_ENV_VARS: [&str; 12] = [
     "APP_SEED_3",
     "APP_SEED_4",
     "APP_SEED_5",
-    "DEVICE_HOSTNAME",
+    "MANAGER_IP",
 ];
 
 pub fn is_allowed_by_permissions<'a>(app_id: &str, env_var: &str, permissions: &[&'a String]) -> bool {
@@ -53,6 +53,8 @@ pub fn is_allowed_by_permissions<'a>(app_id: &str, env_var: &str, permissions: &
             && C_LIGHTNING_ENV_VARS.contains(&env_var);
     } else if env_var.starts_with("APP_HIDDEN_SERVICE_") || env_var.starts_with("APP_SEED") {
         return true;
+    } else if env_var == "DEVICE_HOSTNAME" {
+        return permissions.contains(&&"network".to_string());
     } else if env_var.starts_with("APP_") {
         let mut split_result: Vec<&str> = env_var.split('_').collect();
         // Remove the APP_
