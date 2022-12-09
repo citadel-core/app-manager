@@ -32,7 +32,6 @@ pub enum PortPriority {
     Required,
 }
 
-
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 #[serde(untagged)]

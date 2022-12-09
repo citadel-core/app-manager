@@ -197,7 +197,11 @@ pub fn download_apps(citadel_root: &str) -> Result<()> {
                 stores.push(out_app_store);
             }
             _ => {
-                tracing::error!("Unknown app store version in {}: {}", source.repo, app_store_version);
+                tracing::error!(
+                    "Unknown app store version in {}: {}",
+                    source.repo,
+                    app_store_version
+                );
                 continue;
             }
         }
@@ -307,7 +311,11 @@ pub fn list_updates(citadel_root: &str) -> Result<()> {
                     }
                 }
                 _ => {
-                    tracing::error!("Unknown app store version in {}: {}", store.repo, app_store_version);
+                    tracing::error!(
+                        "Unknown app store version in {}: {}",
+                        store.repo,
+                        app_store_version
+                    );
                     continue;
                 }
             }
@@ -382,7 +390,11 @@ pub fn download_app(citadel_root: &str, app: &str) -> Result<()> {
             )?;
         }
         _ => {
-            tracing::error!("Unknown app store version in {}: {}", app_src.repo, app_store_version);
+            tracing::error!(
+                "Unknown app store version in {}: {}",
+                app_src.repo,
+                app_store_version
+            );
             return Ok(());
         }
     }
@@ -525,7 +537,11 @@ pub fn download_new_apps(citadel_root: &str) -> Result<()> {
                     .extend(new_apps.iter().map(|(k, v)| (k.clone(), v.clone())));
             }
             _ => {
-                tracing::error!("Unknown app store version in {}: {}", source.repo, app_store_version);
+                tracing::error!(
+                    "Unknown app store version in {}: {}",
+                    source.repo,
+                    app_store_version
+                );
                 continue;
             }
         }

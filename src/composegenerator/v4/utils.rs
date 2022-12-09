@@ -18,7 +18,11 @@ pub fn derive_entropy(seed: &str, identifier: &str) -> String {
     hex::encode(result)
 }
 
-pub fn validate_cmd<'a>(app_name: &str, command: &Command, permissions: &[&'a String]) -> Result<()> {
+pub fn validate_cmd<'a>(
+    app_name: &str,
+    command: &Command,
+    permissions: &[&'a String],
+) -> Result<()> {
     match command {
         Command::SimpleCommand(simple_command) => {
             let env_vars = find_env_vars(simple_command);

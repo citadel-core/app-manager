@@ -61,7 +61,9 @@ pub fn preprocess_apps(citadel_root: &Path, app_dir: &Path) -> Result<()> {
         let app_id = app.file_name();
         let app_id = app_id.to_str().unwrap();
 
-        if let Err(tera_error) = tera::convert_app_yml(&app.path(), &services, &env_vars, &citadel_seed) {
+        if let Err(tera_error) =
+            tera::convert_app_yml(&app.path(), &services, &env_vars, &citadel_seed)
+        {
             tracing::error!("Error converting app jinja files: {:?}", tera_error);
             continue;
         }
@@ -164,7 +166,11 @@ pub fn preprocess_config_files(citadel_root: &Path, app_dir: &Path) -> Result<()
             &Some(env_vars.clone()),
             &tor_dir,
         ) {
-            tracing::error!("Error converting app jinja files for {}: {:?}", app.path().display(), tera_error);
+            tracing::error!(
+                "Error converting app jinja files for {}: {:?}",
+                app.path().display(),
+                tera_error
+            );
             continue;
         }
     }

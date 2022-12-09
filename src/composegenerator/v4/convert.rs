@@ -15,8 +15,8 @@ use crate::{
     composegenerator::types::OutputMetadata,
     utils::{find_env_vars, flatten},
 };
-use std::collections::{BTreeMap, HashMap};
 use lazy_static::lazy_static;
+use std::collections::{BTreeMap, HashMap};
 
 use crate::composegenerator::types::ResultYml;
 use anyhow::{bail, Result};
@@ -314,14 +314,12 @@ fn convert_volumes<'a>(
 
             if let Some(jwt_pubkey_mount) = mounts.get("jwt-pubkey") {
                 if let StringOrMap::String(jwt_pubkey_mount) = jwt_pubkey_mount {
-                    service.volumes.push(format!(
-                        "jwt-public-key:{}",
-                        jwt_pubkey_mount
-                    ));
+                    service
+                        .volumes
+                        .push(format!("jwt-public-key:{}", jwt_pubkey_mount));
                 } else {
                     bail!("JWT pubkey mount must be a string");
                 }
-
             }
 
             if let Some(bitcoin_mount) = mounts.get("bitcoin") {
@@ -342,10 +340,18 @@ fn convert_volumes<'a>(
                     continue;
                 }
                 if !permissions.contains(&key) {
-                    bail!("App defines a mount for {}, but does not request that permission", key);
+                    bail!(
+                        "App defines a mount for {}, but does not request that permission",
+                        key
+                    );
                 }
                 if let StringOrMap::String(string) = value {
-                    service.volumes.push(format!("${{CITADEL_APP_DATA}}/{}/${{APP_{}_DATA_DIR}}:{}", key, key.to_uppercase().replace('-', "_"), string));
+                    service.volumes.push(format!(
+                        "${{CITADEL_APP_DATA}}/{}/${{APP_{}_DATA_DIR}}:{}",
+                        key,
+                        key.to_uppercase().replace('-', "_"),
+                        string
+                    ));
                 } else {
                     bail!("Mounts must be a map");
                 }

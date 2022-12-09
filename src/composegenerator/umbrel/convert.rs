@@ -148,9 +148,15 @@ pub fn convert_compose(
                     volume_path.to_string(),
                 );
             } else if volume_name.contains("APP_LIGHTNING_NODE_DATA_DIR") {
-                mounts.insert("lnd".to_string(), StringOrMap::String(volume_path.to_string()));
+                mounts.insert(
+                    "lnd".to_string(),
+                    StringOrMap::String(volume_path.to_string()),
+                );
             } else if volume_name.contains("APP_BITCOIN_DATA_DIR") {
-                mounts.insert("bitcoin".to_string(), StringOrMap::String(volume_path.to_string()));
+                mounts.insert(
+                    "bitcoin".to_string(),
+                    StringOrMap::String(volume_path.to_string()),
+                );
             } else if volume_name.contains("APP_CORE_LIGHTNING_REST_CERT_DIR") {
                 bail!("C Lightning mounts are not supported yet");
             } else {

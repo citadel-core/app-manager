@@ -441,8 +441,7 @@ pub fn convert_dir(citadel_root: &str) -> Result<()> {
     // Part 7: Save registry & virtual apps
     {
         let app_registry_file = citadel_root.join("apps").join("registry.json");
-        let mut app_registry_file =
-            std::fs::File::create(app_registry_file)?;
+        let mut app_registry_file = std::fs::File::create(app_registry_file)?;
         serde_json::to_writer(&mut app_registry_file, &app_registry)
             .expect("Error writing registry.json!");
         let virtual_apps_file = citadel_root.join("apps").join("virtual-apps.json");

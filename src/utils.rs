@@ -95,7 +95,16 @@ mod test_env_vars {
     #[test]
     fn find_vars_with_fallback() {
         let result = find_env_vars("${DEVICE_HOSTS:-\"Hello world\"} ${OTHER_VAR-\"Hello world\"} ${ANOTHER_VAR:2:1} ${LAST_VAR:-$BYPASS}");
-        assert_eq!(result, vec!["DEVICE_HOSTS", "OTHER_VAR", "ANOTHER_VAR", "LAST_VAR", "BYPASS"]);
+        assert_eq!(
+            result,
+            vec![
+                "DEVICE_HOSTS",
+                "OTHER_VAR",
+                "ANOTHER_VAR",
+                "LAST_VAR",
+                "BYPASS"
+            ]
+        );
     }
 }
 

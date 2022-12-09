@@ -81,22 +81,29 @@ pub fn v3_to_v4(app: AppYmlV3, installed_services: &Option<&Vec<String>>) -> typ
         let requires = container.requires.unwrap_or_default();
         let old_mounts = container.mounts.unwrap_or_default();
         if deps.contains(&&"lnd".to_string()) && !requires.contains(&"c-lightning".to_string()) {
-            mounts.insert("lnd".to_string(), StringOrMap::String(old_mounts.lnd.unwrap_or_else(|| "/lnd".into())));
+            mounts.insert(
+                "lnd".to_string(),
+                StringOrMap::String(old_mounts.lnd.unwrap_or_else(|| "/lnd".into())),
+            );
         }
         if deps.contains(&&"c-lightning".to_string()) && !requires.contains(&"lnd".to_string()) {
-            mounts.insert("core-ln".to_string(),
-            StringOrMap::String(old_mounts
-                    .c_lightning
-                    .unwrap_or_else(|| "/c-lightning".into()))
+            mounts.insert(
+                "core-ln".to_string(),
+                StringOrMap::String(
+                    old_mounts
+                        .c_lightning
+                        .unwrap_or_else(|| "/c-lightning".into()),
+                ),
             );
         }
         if deps.contains(&&"bitcoin".to_string()) {
-            mounts.insert("bitcoin".to_string(), StringOrMap::String(old_mounts.bitcoin.unwrap_or_else(|| "/bitcoin".into())));
+            mounts.insert(
+                "bitcoin".to_string(),
+                StringOrMap::String(old_mounts.bitcoin.unwrap_or_else(|| "/bitcoin".into())),
+            );
         }
         let data_mounts = container.data.unwrap_or_default();
-        let mut new_data_mounts = HashMap::<String, String>::with_capacity(
-            data_mounts.capacity(),
-        );
+        let mut new_data_mounts = HashMap::<String, String>::with_capacity(data_mounts.capacity());
         for value in &data_mounts {
             let mut split = value.split(':');
             let Some(key) = split.next() else {
@@ -107,8 +114,7 @@ pub fn v3_to_v4(app: AppYmlV3, installed_services: &Option<&Vec<String>>) -> typ
                 tracing::error!("Encountered invalid env var: {}", value);
                 continue;
             };
-            new_data_mounts
-                .insert(key.to_string(), value.to_string());
+            new_data_mounts.insert(key.to_string(), value.to_string());
         }
         if !new_data_mounts.is_empty() {
             mounts.insert("data".to_string(), StringOrMap::Map(new_data_mounts));

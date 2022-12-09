@@ -32,7 +32,11 @@ pub const ALWAYS_ALLOWED_ENV_VARS: [&str; 12] = [
     "MANAGER_IP",
 ];
 
-pub fn is_allowed_by_permissions<'a>(app_id: &str, env_var: &str, permissions: &[&'a String]) -> bool {
+pub fn is_allowed_by_permissions<'a>(
+    app_id: &str,
+    env_var: &str,
+    permissions: &[&'a String],
+) -> bool {
     if ALWAYS_ALLOWED_ENV_VARS.contains(&env_var) {
         return true;
     } else if env_var.starts_with("BITCOIN") {
@@ -49,7 +53,8 @@ pub fn is_allowed_by_permissions<'a>(app_id: &str, env_var: &str, permissions: &
             && ELECTRUM_ENV_VARS.contains(&env_var);
     } else if env_var.starts_with("C_LIGHTNING") {
         tracing::warn!("Environment variables starting with C_LIGHTNING_ are deprecated. Please use APP_CORE_LN_* instead");
-        return (permissions.contains(&&"c-lightning".to_string()) || permissions.contains(&&"core-ln".to_string()))
+        return (permissions.contains(&&"c-lightning".to_string())
+            || permissions.contains(&&"core-ln".to_string()))
             && C_LIGHTNING_ENV_VARS.contains(&env_var);
     } else if env_var.starts_with("APP_HIDDEN_SERVICE_") || env_var.starts_with("APP_SEED") {
         return true;
@@ -138,7 +143,15 @@ mod test {
 
     #[test]
     fn allow_cln_and_lnd_data_dirs() {
-        assert!(is_allowed_by_permissions("example-app", "APP_CORE_LN_DATA_DIR", &[&"core-ln".to_string()]));
-        assert!(is_allowed_by_permissions("example-app", "APP_LND_DATA_DIR", &[&"lnd".to_string()]));
+        assert!(is_allowed_by_permissions(
+            "example-app",
+            "APP_CORE_LN_DATA_DIR",
+            &[&"core-ln".to_string()]
+        ));
+        assert!(is_allowed_by_permissions(
+            "example-app",
+            "APP_LND_DATA_DIR",
+            &[&"lnd".to_string()]
+        ));
     }
 }
