@@ -45,6 +45,13 @@ fn tor_hash(input: &str, salt: [u8; 8]) -> String {
     )
 }
 
+fn random_hex_string(len: usize) -> String {
+    let mut rng = rand::thread_rng();
+    let mut bytes = vec![0u8; len];
+    rng.fill_bytes(&mut bytes);
+    hex::encode(bytes)
+}
+
 pub fn convert_app_yml(
     app_path: &Path,
     services: &[String],
@@ -119,6 +126,18 @@ fn convert_app_yml_internal(
             let mut salt = [0u8; 8];
             rand::thread_rng().fill_bytes(&mut salt);
             Ok(tera::to_value(tor_hash(input, salt)).expect("Failed to serialize value"))
+        },
+    );
+    tera.register_function(
+        "gen_seed",
+        |args: &HashMap<String, tera::Value>| -> Result<tera::Value, tera::Error> {
+            let Some(len) = args.get("len") else {
+                return Err(tera::Error::msg("Length must be defined"));
+            };
+            let Some(len) = len.as_u64() else {
+                return Err(tera::Error::msg("Length must be a number"));
+            };
+            Ok(tera::to_value(random_hex_string(len as usize)).expect("Failed to serialize value"))
         },
     );
     let tmpl_result = tera.render_str(tmpl.as_str(), &context);
@@ -258,6 +277,18 @@ fn convert_config_template<'a>(
             Ok(tera::to_value(tor_hash(input, salt)).expect("Failed to serialize value"))
         },
     );
+    tera.register_function(
+        "gen_seed",
+        |args: &HashMap<String, tera::Value>| -> Result<tera::Value, tera::Error> {
+            let Some(len) = args.get("len") else {
+                return Err(tera::Error::msg("Length must be defined"));
+            };
+            let Some(len) = len.as_u64() else {
+                return Err(tera::Error::msg("Length must be a number"));
+            };
+            Ok(tera::to_value(random_hex_string(len as usize)).expect("Failed to serialize value"))
+        },
+    );
     let tmpl_result = tera.render_str(tmpl.as_str(), &context);
     if let Err(e) = tmpl_result {
         bail!("Error processing template {}: {}", jinja_file.display(), e);
@@ -299,7 +330,7 @@ pub fn convert_app_config_files(
             .filter_map(|entry| entry.ok())
             .filter(|entry| entry.path().extension().unwrap_or_default() == "jinja")
             .map(|entry| entry.path());
-        
+
         let main_container = get_main_container(&app_yml.services)?;
         let services_with_hs = app_yml.services.iter().filter_map(|(name, service)| {
             if name == main_container || service.hidden_services.is_none() {
@@ -311,11 +342,13 @@ pub fn convert_app_config_files(
         let mut existing_hs = Vec::new();
         for (container, hs) in services_with_hs {
             match hs {
-                crate::composegenerator::v4::types::HiddenServices::PortMap(_) => existing_hs.push(container),
+                crate::composegenerator::v4::types::HiddenServices::PortMap(_) => {
+                    existing_hs.push(container)
+                }
                 crate::composegenerator::v4::types::HiddenServices::LayeredMap(map) => {
                     let mut keys = map.keys().collect();
                     existing_hs.append(&mut keys)
-                },
+                }
             }
         }
 
