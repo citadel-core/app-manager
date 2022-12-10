@@ -2008,8 +2008,7 @@ dependencies = [
 [[package]]
 name = "tera"
 version = "1.17.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3df578c295f9ec044ff1c829daf31bb7581d5b3c2a7a3d87419afe1f2531438c"
+source = "git+https://github.com/AaronDewes/tera?rev=91741d0#91741d02968d3b74062002b5cd713026cfe274b7"
 dependencies = [
  "globwalk",
  "lazy_static",

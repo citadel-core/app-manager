@@ -27,7 +27,7 @@ gitlab = { version = "0.1506.0", optional = true }
 url = { version = "2.3.0", optional = true }
 # Only used by the CLI
 clap = { version = "4.0", features = ["derive"], optional = true }
-tera = { version = "1", default-features = false, optional = true }
+tera = { default-features = false, optional = true, git = "https://github.com/AaronDewes/tera", rev = "91741d0" }
 dotenv = { version = "0.15.0", optional = true }
 tempdir = { version = "0.3.7", optional = true }
 git2 = { version = "0.15.0", optional = true }

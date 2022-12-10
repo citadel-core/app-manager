@@ -5,7 +5,7 @@ use std::{
 };
 
 use rand::RngCore;
-use tera::Tera;
+use tera::{renderer::processor::Processor, Tera};
 
 use crate::{
     composegenerator::{
@@ -150,8 +150,7 @@ fn convert_app_yml_internal(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn convert_config_template<'a>(
-    jinja_file: &Path,
+fn generate_tera<'a>(
     app_id: &str,
     app_version: &str,
     permissions: &[&'a String],
@@ -160,8 +159,7 @@ fn convert_config_template<'a>(
     env_vars: &HashMap<String, String>,
     citadel_seed: &str,
     tor_dir: &Path,
-) -> Result<()> {
-    let output_file = jinja_file.with_extension("");
+) -> Result<(Tera, tera::Context)> {
     let mut context = tera::Context::new();
     context.insert("services", &services);
     context.insert("app_name", app_id);
@@ -235,9 +233,6 @@ fn convert_config_template<'a>(
             context.insert(key, "notyetgenerated.onion");
         }
     }
-
-    let mut tmpl = String::new();
-    std::fs::File::open(jinja_file)?.read_to_string(&mut tmpl)?;
     let mut tera = Tera::default();
     let citadel_seed = citadel_seed.to_string();
     let app_id = app_id.to_string();
@@ -289,13 +284,7 @@ fn convert_config_template<'a>(
             Ok(tera::to_value(random_hex_string(len as usize)).expect("Failed to serialize value"))
         },
     );
-    let tmpl_result = tera.render_str(tmpl.as_str(), &context);
-    if let Err(e) = tmpl_result {
-        bail!("Error processing template {}: {}", jinja_file.display(), e);
-    }
-    let mut writer = std::fs::File::create(output_file)?;
-    writer.write_all(tmpl_result.unwrap().as_bytes())?;
-    Ok(())
+    Ok((tera, context))
 }
 
 pub fn convert_app_config_files(
@@ -352,18 +341,56 @@ pub fn convert_app_config_files(
             }
         }
 
+        let (mut tera, mut context) = generate_tera(
+            app_path.file_name().unwrap().to_str().unwrap(),
+            &app_version,
+            &perms,
+            services,
+            &existing_hs,
+            env_vars,
+            citadel_seed,
+            tor_dir,
+        )?;
+
+        // Sort other_jinja_files alphabetically so that we can process them in a deterministic order
+        // But files called _vars.jinja must be processed first
+        let mut other_jinja_files: Vec<_> = other_jinja_files.collect();
+        other_jinja_files.sort();
+        other_jinja_files.sort_by_key(|path| {
+            if path.file_name().unwrap() == "_vars.jinja" {
+                0
+            } else {
+                1
+            }
+        });
         for jinja_file in other_jinja_files {
-            convert_config_template(
-                &jinja_file,
-                app_path.file_name().unwrap().to_str().unwrap(),
-                &app_version,
-                &perms,
-                services,
-                &existing_hs,
-                env_vars,
-                citadel_seed,
-                tor_dir,
-            )?;
+            if jinja_file.file_name().unwrap() == "_vars.jinja" {
+                let mut file = std::fs::File::open(&jinja_file)?;
+                let mut tmpl = String::new();
+                file.read_to_string(&mut tmpl)?;
+                tera.add_raw_template("_vars", &tmpl)?;
+                let mut output = Vec::with_capacity(tmpl.lines().count());
+                let tmpl = tera.get_template("_vars")?;
+                let mut processor =
+                    Processor::new(tmpl, &tera, &context, false);
+                processor.render(&mut output)?;
+                // We ignore the output for this file
+                let ctx = processor.get_ctx();
+                for (key, value) in ctx {
+                    context.insert(key, &value);
+                }
+            } else {
+                let output_file = jinja_file.with_extension("");
+                let mut file = std::fs::File::open(&jinja_file)?;
+                let mut tmpl = String::new();
+                file.read_to_string(&mut tmpl)?;
+                let tmpl_result = tera.render_str(tmpl.as_str(), &context);
+                if let Err(e) = tmpl_result {
+                    bail!("Error processing template {}: {}", jinja_file.display(), e);
+                }
+                let mut writer = std::fs::File::create(output_file)?;
+                writer.write_all(tmpl_result.unwrap().as_bytes())?;
+            }
         }
     }
 
