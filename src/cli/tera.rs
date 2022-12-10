@@ -369,7 +369,7 @@ pub fn convert_app_config_files(
                 let mut tmpl = String::new();
                 file.read_to_string(&mut tmpl)?;
                 tera.add_raw_template("_vars", &tmpl)?;
-                let mut output = Vec::with_capacity(tmpl.lines().count());
+                let mut output = Vec::with_capacity(2000);
                 let tmpl = tera.get_template("_vars")?;
                 let mut processor =
                     Processor::new(tmpl, &tera, &context, false);
