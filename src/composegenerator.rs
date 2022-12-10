@@ -30,9 +30,9 @@ where
     }
     let version: u64;
     if app_yml.get("citadel_version").is_none()
-        || !app_yml.get("citadel_version").unwrap().is_number()
+        || !app_yml.get("citadel_version").unwrap().is_u64()
     {
-        if app_yml.get("version").is_some() && app_yml.get("version").unwrap().is_number() {
+        if app_yml.get("version").is_some() && app_yml.get("version").unwrap().is_u64() {
             version = app_yml.get("version").unwrap().as_u64().unwrap();
         } else {
             bail!("Citadel file format is not set or not a number!");
@@ -66,9 +66,9 @@ where
     }
     let version: u64;
     if app_yml.get("citadel_version").is_none()
-        || !app_yml.get("citadel_version").unwrap().is_number()
+        || !app_yml.get("citadel_version").unwrap().is_u64()
     {
-        if app_yml.get("version").is_some() && app_yml.get("version").unwrap().is_number() {
+        if app_yml.get("version").is_some() && app_yml.get("version").unwrap().is_u64() {
             version = app_yml.get("version").unwrap().as_u64().unwrap();
         } else {
             bail!("Citadel file format is not set or not a number!");
