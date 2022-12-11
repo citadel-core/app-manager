@@ -15,6 +15,7 @@ use crate::{
             utils::{derive_entropy, get_main_container},
         },
     },
+    constants::NO_SEED_FOUND_FALLBACK_MSG,
     utils::flatten,
 };
 
@@ -59,13 +60,13 @@ pub fn convert_app_yml(
     citadel_seed: &Option<String>,
 ) -> Result<()> {
     let app_yml_jinja = app_path.to_path_buf().join("app.yml.jinja");
-    if app_yml_jinja.exists() && citadel_seed.is_some() {
+    if app_yml_jinja.exists() {
         convert_app_yml_internal(
             &app_yml_jinja,
             app_path.file_name().unwrap().to_str().unwrap(),
             services,
             env_vars,
-            citadel_seed.as_ref().unwrap(),
+            citadel_seed.to_owned(),
         )?;
     }
     Ok(())
@@ -76,7 +77,7 @@ fn convert_app_yml_internal(
     app_id: &str,
     services: &[String],
     env_vars: &HashMap<String, String>,
-    citadel_seed: &str,
+    citadel_seed: Option<String>,
 ) -> Result<()> {
     let mut context = tera::Context::new();
     context.insert("services", services);
@@ -84,8 +85,8 @@ fn convert_app_yml_internal(
     let mut tmpl = String::new();
     std::fs::File::open(jinja_file)?.read_to_string(&mut tmpl)?;
     let mut tera = Tera::default();
-    let citadel_seed = citadel_seed.to_string();
     let app_id = app_id.to_string();
+    let app_id_clone = app_id.clone();
     for (key, val) in env_vars {
         // We can't know the permissions at this stage, so we only allow the env vars here that are always allowed
         if ALWAYS_ALLOWED_ENV_VARS.contains(&key.as_str()) {
@@ -108,11 +109,15 @@ fn convert_app_yml_internal(
                 return Err(tera::Error::msg("Identifier must be a string"));
             };
 
-            Ok(tera::to_value(derive_entropy(
-                &citadel_seed,
-                format!("app-{}-{}", app_id.replace('-', "_"), identifier).as_str(),
-            ))
-            .expect("Failed to serialize value"))
+            if let Some(citadel_seed) = &citadel_seed {
+                Ok(tera::to_value(derive_entropy(
+                    citadel_seed,
+                    format!("app-{}-{}", app_id.replace('-', "_"), identifier).as_str(),
+                ))
+                .expect("Failed to serialize value"))
+            } else {
+                Ok(tera::to_value(NO_SEED_FOUND_FALLBACK_MSG).expect("Failed to serialize value"))
+            }
         },
     );
     tera.register_filter(
@@ -144,8 +149,15 @@ fn convert_app_yml_internal(
     if let Err(e) = tmpl_result {
         bail!("Error processing template {}: {}", jinja_file.display(), e);
     }
+    let tmpl_result = tmpl_result.unwrap();
+    if tmpl_result.contains(NO_SEED_FOUND_FALLBACK_MSG) {
+        bail!(
+            "App {} uses APP_SEED in a Jinja file, it can't be processed yet.",
+            app_id_clone
+        );
+    }
     let mut writer = std::fs::File::create(jinja_file.to_path_buf().with_extension(""))?;
-    writer.write_all(tmpl_result.unwrap().as_bytes())?;
+    writer.write_all(tmpl_result.as_bytes())?;
     Ok(())
 }
 
@@ -157,7 +169,7 @@ fn generate_tera<'a>(
     services: &[String],
     services_with_hs: &[&String],
     env_vars: &HashMap<String, String>,
-    citadel_seed: &str,
+    citadel_seed: Option<String>,
     tor_dir: &Path,
 ) -> Result<(Tera, tera::Context)> {
     let mut context = tera::Context::new();
@@ -169,15 +181,22 @@ fn generate_tera<'a>(
             context.insert(key, &val);
         }
     }
-    context.insert(
-        "APP_SEED",
-        &derive_entropy(citadel_seed, format!("app-{}-seed", app_id).as_str()),
-    );
-    for i in 1..6 {
+    if let Some(citadel_seed) = &citadel_seed {
         context.insert(
-            format!("APP_SEED_{}", i),
-            &derive_entropy(citadel_seed, format!("app-{}-seed{}", app_id, i).as_str()),
+            "APP_SEED",
+            &derive_entropy(citadel_seed, format!("app-{}-seed", app_id).as_str()),
         );
+        for i in 1..6 {
+            context.insert(
+                format!("APP_SEED_{}", i),
+                &derive_entropy(citadel_seed, format!("app-{}-seed{}", app_id, i).as_str()),
+            );
+        }
+    } else {
+        context.insert("APP_SEED", NO_SEED_FOUND_FALLBACK_MSG);
+        for i in 1..6 {
+            context.insert(format!("APP_SEED_{}", i), NO_SEED_FOUND_FALLBACK_MSG);
+        }
     }
     context.insert("APP_VERSION", app_version);
 
@@ -234,7 +253,6 @@ fn generate_tera<'a>(
         }
     }
     let mut tera = Tera::default();
-    let citadel_seed = citadel_seed.to_string();
     let app_id = app_id.to_string();
     tera.register_function(
         "derive_entropy",
@@ -252,11 +270,15 @@ fn generate_tera<'a>(
                 return Err(tera::Error::msg("Identifier must be a string"));
             };
 
-            Ok(tera::to_value(derive_entropy(
-                &citadel_seed,
-                format!("app-{}-{}", app_id.replace('-', "_"), identifier).as_str(),
-            ))
-            .expect("Failed to serialize value"))
+            if let Some(citadel_seed) = &citadel_seed {
+                Ok(tera::to_value(derive_entropy(
+                    citadel_seed,
+                    format!("app-{}-{}", app_id.replace('-', "_"), identifier).as_str(),
+                ))
+                .expect("Failed to serialize value"))
+            } else {
+                Ok(tera::to_value(NO_SEED_FOUND_FALLBACK_MSG).expect("Failed to serialize value"))
+            }
         },
     );
     tera.register_filter(
@@ -294,10 +316,7 @@ pub fn convert_app_config_files(
     env_vars: &Option<HashMap<String, String>>,
     tor_dir: &Path,
 ) -> Result<()> {
-    if citadel_seed.is_some() && env_vars.is_some() {
-        let citadel_seed = citadel_seed.as_ref().unwrap();
-        let env_vars = env_vars.as_ref().unwrap();
-
+    if let Some(env_vars) = env_vars {
         let app_yml = app_path.join("app.yml");
         if !app_yml.exists() {
             bail!("app.yml not found in {}", app_path.display());
@@ -348,7 +367,7 @@ pub fn convert_app_config_files(
             services,
             &existing_hs,
             env_vars,
-            citadel_seed,
+            citadel_seed.to_owned(),
             tor_dir,
         )?;
 
@@ -387,8 +406,15 @@ pub fn convert_app_config_files(
                 if let Err(e) = tmpl_result {
                     bail!("Error processing template {}: {}", jinja_file.display(), e);
                 }
+                let tmpl_result = tmpl_result.unwrap();
+                if tmpl_result.contains(NO_SEED_FOUND_FALLBACK_MSG) {
+                    bail!(
+                        "App {} uses APP_SEED in a Jinja file, it can't be processed yet.",
+                        app_path.file_name().unwrap().to_str().unwrap()
+                    );
+                }
                 let mut writer = std::fs::File::create(output_file)?;
-                writer.write_all(tmpl_result.unwrap().as_bytes())?;
+                writer.write_all(tmpl_result.as_bytes())?;
             }
         }
     }
