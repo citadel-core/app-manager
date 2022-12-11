@@ -58,7 +58,7 @@ pub fn is_allowed_by_permissions<'a>(
             && C_LIGHTNING_ENV_VARS.contains(&env_var);
     } else if env_var.starts_with("APP_HIDDEN_SERVICE_") || env_var.starts_with("APP_SEED") {
         return true;
-    } else if env_var == "DEVICE_HOSTNAME" {
+    } else if env_var == "DEVICE_HOSTNAME" || env_var == "DEVICE_HOSTS" {
         return permissions.contains(&&"network".to_string());
     } else if env_var.starts_with("APP_") {
         let mut split_result: Vec<&str> = env_var.split('_').collect();
