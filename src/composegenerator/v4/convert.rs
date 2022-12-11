@@ -312,7 +312,7 @@ fn convert_volumes<'a>(
                 }
             }
 
-            if let Some(jwt_pubkey_mount) = mounts.get("jwt-pubkey") {
+            if let Some(jwt_pubkey_mount) = mounts.get("jwt-public-key") {
                 if let StringOrMap::String(jwt_pubkey_mount) = jwt_pubkey_mount {
                     service
                         .volumes
@@ -336,7 +336,11 @@ fn convert_volumes<'a>(
             }
 
             for (key, value) in mounts {
-                if key == "data" || key == "bitcoin" || key == "shared_data" {
+                if key == "data"
+                    || key == "bitcoin"
+                    || key == "shared_data"
+                    || key == "jwt-public-key"
+                {
                     continue;
                 }
                 if !permissions.contains(&key) {

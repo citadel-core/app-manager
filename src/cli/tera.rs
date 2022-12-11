@@ -371,8 +371,7 @@ pub fn convert_app_config_files(
                 tera.add_raw_template("_vars", &tmpl)?;
                 let mut output = Vec::with_capacity(2000);
                 let tmpl = tera.get_template("_vars")?;
-                let mut processor =
-                    Processor::new(tmpl, &tera, &context, false);
+                let mut processor = Processor::new(tmpl, &tera, &context, false);
                 processor.render(&mut output)?;
                 // We ignore the output for this file
                 let ctx = processor.get_ctx();

@@ -29,8 +29,7 @@ where
         bail!("App.yml is not a map!");
     }
     let version: u64;
-    if app_yml.get("citadel_version").is_none()
-        || !app_yml.get("citadel_version").unwrap().is_u64()
+    if app_yml.get("citadel_version").is_none() || !app_yml.get("citadel_version").unwrap().is_u64()
     {
         if app_yml.get("version").is_some() && app_yml.get("version").unwrap().is_u64() {
             version = app_yml.get("version").unwrap().as_u64().unwrap();
@@ -65,8 +64,7 @@ where
         bail!("App.yml is not a map!");
     }
     let version: u64;
-    if app_yml.get("citadel_version").is_none()
-        || !app_yml.get("citadel_version").unwrap().is_u64()
+    if app_yml.get("citadel_version").is_none() || !app_yml.get("citadel_version").unwrap().is_u64()
     {
         if app_yml.get("version").is_some() && app_yml.get("version").unwrap().is_u64() {
             version = app_yml.get("version").unwrap().as_u64().unwrap();
