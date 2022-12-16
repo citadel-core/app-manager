@@ -2,7 +2,9 @@ use std::{collections::HashMap, io::Read, path::Path};
 
 use anyhow::Result;
 
-use super::{tera, umbrel::convert, UserJson};
+#[cfg(feature = "umbrel")]
+use super::umbrel::convert;
+use super::{tera, UserJson};
 
 pub fn preprocess_apps(citadel_root: &Path, app_dir: &Path) -> Result<()> {
     let mut citadel_seed = None;

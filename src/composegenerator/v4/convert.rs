@@ -270,94 +270,70 @@ fn convert_volumes<'a>(
     for (service_name, service) in services {
         let original_definition = containers.get(service_name).unwrap();
         if let Some(mounts) = &original_definition.mounts {
-            if let Some(data_mounts) = &mounts.get("data") {
-                if let StringOrMap::Map(data_mounts) = data_mounts {
-                    for (host_path, container_path) in data_mounts {
-                        if host_path.contains("..") {
-                            bail!("A data dir to mount is not allowed to contain '..'");
-                        }
-                        let mount_host_dir: String = if !host_path.starts_with('/') {
-                            "/".to_owned() + host_path
-                        } else {
-                            host_path.clone()
-                        };
-                        service.volumes.push(format!(
-                            "${{APP_DATA_DIR}}{}:{}",
-                            mount_host_dir, container_path
-                        ));
-                    }
-                } else {
-                    bail!("Data mounts must be a map");
-                }
-            }
-
-            if let Some(shared_data_mounts) = &mounts.get("shared_data") {
-                if let StringOrMap::Map(data_mounts) = shared_data_mounts {
-                    for (host_path, container_path) in data_mounts {
-                        if host_path.contains("..") {
-                            bail!("A data dir to mount is not allowed to contain '..'");
-                        }
-                        let mount_host_dir: String = if !host_path.starts_with('/') {
-                            "/".to_owned() + host_path
-                        } else {
-                            host_path.clone()
-                        };
-                        service.volumes.push(format!(
-                            "${{APP_DATA_DIR}}{}:{}",
-                            mount_host_dir, container_path
-                        ));
-                    }
-                } else {
-                    bail!("Data mounts must be a map");
-                }
-            }
-
-            if let Some(jwt_pubkey_mount) = mounts.get("jwt-public-key") {
-                if let StringOrMap::String(jwt_pubkey_mount) = jwt_pubkey_mount {
-                    service
-                        .volumes
-                        .push(format!("jwt-public-key:{}", jwt_pubkey_mount));
-                } else {
-                    bail!("JWT pubkey mount must be a string");
-                }
-            }
-
-            if let Some(bitcoin_mount) = mounts.get("bitcoin") {
-                if !permissions.contains(&&"bitcoind".to_string()) {
-                    bail!("bitcoin mount defined by container without Bitcoin permissions",);
-                }
-                if let StringOrMap::String(bitcoin_path) = bitcoin_mount {
-                    service
-                        .volumes
-                        .push(format!("${{BITCOIN_DATA_DIR}}:{}", bitcoin_path));
-                } else {
-                    bail!("bitcoin mount defined as map, but only string is supported");
-                }
-            }
-
             for (key, value) in mounts {
-                if key == "data"
-                    || key == "bitcoin"
-                    || key == "shared_data"
-                    || key == "jwt-public-key"
-                {
-                    continue;
-                }
-                if !permissions.contains(&key) {
-                    bail!(
-                        "App defines a mount for {}, but does not request that permission",
-                        key
-                    );
-                }
-                if let StringOrMap::String(string) = value {
-                    service.volumes.push(format!(
-                        "${{CITADEL_APP_DATA}}/{}/${{APP_{}_DATA_DIR}}:{}",
-                        key,
-                        key.to_uppercase().replace('-', "_"),
-                        string
-                    ));
-                } else {
-                    bail!("Mounts must be a map");
+                match key.as_str() {
+                    // These can be treated equally here
+                    // shared_data may only have one entry, but that's checked earlier
+                    "shared_data" | "data" => {
+                        if let StringOrMap::Map(data_mounts) = value {
+                            for (host_path, container_path) in data_mounts {
+                                if host_path.contains("..") {
+                                    bail!("A data dir to mount is not allowed to contain '..'");
+                                }
+                                let mount_host_dir: String = if !host_path.starts_with('/') {
+                                    "/".to_owned() + host_path
+                                } else {
+                                    host_path.clone()
+                                };
+                                service.volumes.push(format!(
+                                    "${{APP_DATA_DIR}}{}:{}",
+                                    mount_host_dir, container_path
+                                ));
+                            }
+                        } else {
+                            bail!("Data mounts must be a map");
+                        }
+                    }
+                    "bitcoin" => {
+                        if !permissions.contains(&&"bitcoind".to_string()) {
+                            bail!("bitcoin mount defined by container without Bitcoin permissions",);
+                        }
+                        if let StringOrMap::String(bitcoin_path) = value {
+                            service
+                                .volumes
+                                .push(format!("${{BITCOIN_DATA_DIR}}:{}", bitcoin_path));
+                        } else {
+                            bail!("bitcoin mount defined as map, but only string is supported");
+                        }
+                    }
+                    "jwt-public-key" => {
+                        if let StringOrMap::String(jwt_pubkey_mount) = value {
+                            service
+                                .volumes
+                                .push(format!("jwt-public-key:{}", jwt_pubkey_mount));
+                        } else {
+                            bail!("JWT pubkey mount must be a string");
+                        }
+                    }
+                    _ => {
+                        if permissions.contains(&key) {
+                            if let StringOrMap::String(string) = value {
+                                service.volumes.push(format!(
+                                    "${{CITADEL_APP_DATA}}/{}/${{APP_{}_DATA_DIR}}:{}",
+                                    key,
+                                    key.to_uppercase().replace('-', "_"),
+                                    string
+                                ));
+                            } else {
+                                bail!("Mounts must be a map");
+                            }
+                        } else {
+                            bail!(
+                                "App defines a mount for {}, but that mount is either not specified as a permission or not yet supported by this version of the app CLI",
+                                key
+                            );
+                        }
+                    }
                 }
             }
         }

@@ -20,6 +20,7 @@ use anyhow::Result;
 mod preprocessing;
 pub mod repos;
 mod tera;
+#[cfg(feature = "umbrel")]
 pub mod umbrel;
 
 // A port map as used during creating the port map

@@ -10,7 +10,9 @@ use semver::Version;
 use serde::{Deserialize, Serialize};
 use tempdir::TempDir;
 
-use crate::{composegenerator::load_config_as_v4, constants::MINIMUM_COMPATIBLE_APP_MANAGER, map};
+#[cfg(feature = "umbrel")]
+use crate::map;
+use crate::{composegenerator::load_config_as_v4, constants::MINIMUM_COMPATIBLE_APP_MANAGER};
 
 mod git;
 

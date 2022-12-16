@@ -37,7 +37,7 @@ pub enum PortPriority {
 #[serde(untagged)]
 pub enum StringOrMap {
     String(String),
-    Map(HashMap<String, String>),
+    Map(BTreeMap<String, String>),
 }
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug, PartialEq, Eq)]
@@ -81,7 +81,7 @@ pub struct Container {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub required_ports: Option<PortsDefinition>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub mounts: Option<HashMap<String, StringOrMap>>,
+    pub mounts: Option<BTreeMap<String, StringOrMap>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub assign_fixed_ip: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]

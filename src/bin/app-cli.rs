@@ -1,19 +1,21 @@
 use citadel_apps::cli;
 #[cfg(all(feature = "umbrel", feature = "dev-tools"))]
 use citadel_apps::composegenerator::umbrel::types::Metadata as UmbrelMetadata;
-use citadel_apps::composegenerator::v4::types::AppYml;
-use citadel_apps::composegenerator::{convert_config, load_config};
 #[cfg(feature = "dev-tools")]
 use citadel_apps::{
     composegenerator::{
         compose::types::ComposeSpecification,
+        convert_config, load_config,
         types::ResultYml,
         v3::{convert::v3_to_v4, types::SchemaItemContainers},
+        v4::types::AppYml,
     },
     updates::update_app,
 };
 use clap::{Parser, Subcommand};
+#[cfg(any(feature = "umbrel", feature = "dev-tools"))]
 use std::path::Path;
+#[cfg(feature = "dev-tools")]
 use std::process::exit;
 
 #[derive(Subcommand, Debug)]

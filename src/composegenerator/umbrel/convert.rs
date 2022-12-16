@@ -126,8 +126,8 @@ pub fn convert_compose(
         if service_name == "web" && !has_main {
             service_name = "main".to_string();
         }
-        let mut mounts = HashMap::new();
-        let mut new_data_mounts = HashMap::<String, String>::new();
+        let mut mounts = BTreeMap::new();
+        let mut new_data_mounts = BTreeMap::<String, String>::new();
         for volume in service_def.volumes {
             // Convert mounts using env vars to real mounts
             // For example, if a volume is "${APP_DATA_DIR}/thing:/data",

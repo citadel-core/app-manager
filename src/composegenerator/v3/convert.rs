@@ -77,7 +77,7 @@ pub fn v3_to_v4(app: AppYmlV3, installed_services: &Option<&Vec<String>>) -> typ
         if container.no_network.unwrap_or(false) {
             assign_fixed_ip = Some(false);
         }
-        let mut mounts = HashMap::new();
+        let mut mounts = BTreeMap::new();
         let requires = container.requires.unwrap_or_default();
         let old_mounts = container.mounts.unwrap_or_default();
         if deps.contains(&&"lnd".to_string()) && !requires.contains(&"c-lightning".to_string()) {
@@ -103,7 +103,7 @@ pub fn v3_to_v4(app: AppYmlV3, installed_services: &Option<&Vec<String>>) -> typ
             );
         }
         let data_mounts = container.data.unwrap_or_default();
-        let mut new_data_mounts = HashMap::<String, String>::with_capacity(data_mounts.capacity());
+        let mut new_data_mounts = BTreeMap::<String, String>::new();
         for value in &data_mounts {
             let mut split = value.split(':');
             let Some(key) = split.next() else {
