@@ -111,13 +111,12 @@ fn configure_ports(
                 dynamic: false,
             };
             if let Some(real_port_map) = port_map {
-                if real_port_map.get(service_name).is_none() {
+                let Some(ports) = real_port_map.get(service_name) else {
                     bail!(
                         "Container {} not found or invalid in port map",
                         service_name
                     );
-                }
-                let ports = real_port_map.get(service_name).unwrap();
+                };
                 public_port = get_host_port(ports, internal_port);
             } else {
                 public_port = Some(&fake_port);

@@ -267,9 +267,9 @@ pub fn convert(dir: &Path) -> Result<()> {
                                                                                                 // This should have the format APP_{APP_NAME}_{SERVICE_NAME}_IP
                                                                                                 // Extract the service name
                                                                                                 // App name is metadata.id.to_uppercase()
-                                                                                                let service_name = var.trim_start_matches(format!("APP_{}_", metadata.id.to_uppercase().replace("-", "_")).as_str()).trim_end_matches("_IP").to_lowercase().replace("_", "-");
+                                                                                                let service_name = var.trim_start_matches(format!("APP_{}_", metadata.id.to_uppercase().replace('-', "_")).as_str()).trim_end_matches("_IP").to_lowercase().replace('_', "-");
                                                                                                 // This difference in names is used by some umbrel apps, including Suredbits
-                                                                                                if !services.contains_key(&service_name) && services.contains_key(&service_name.replace("-", "")) {
+                                                                                                if !services.contains_key(&service_name) && services.contains_key(&service_name.replace('-', "")) {
                                                                                                     key = key.replace('_', "");
                                                                                                 }
 
@@ -331,7 +331,7 @@ pub fn convert(dir: &Path) -> Result<()> {
                                                                                                                                     match redirect {
                                                                                                                                         crate::conch::ast::Redirect::Read(_, _) => bail!("Not implemented yet"),
                                                                                                                                         crate::conch::ast::Redirect::Write(what, target) => {
-                                                                                                                                            if what == Some(2) && target == crate::conch::ast::TopLevelWord::from(crate::conch::ast::ComplexWord::Single(crate::conch::ast::Word::Simple(crate::conch::ast::SimpleWord::Literal("/dev/null".to_string())))) {
+                                                                                                                                            if what == Some(2) && target == crate::conch::ast::ComplexWord::Single(crate::conch::ast::Word::Simple(crate::conch::ast::SimpleWord::Literal("/dev/null".to_string()))) {
                                                                                                                                                 // This is to ignore errors, we can ignore it
                                                                                                                                             }
                                                                                                                                         },

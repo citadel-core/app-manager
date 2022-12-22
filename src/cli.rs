@@ -21,6 +21,7 @@ mod preprocessing;
 pub mod repos;
 mod tera;
 #[cfg(feature = "umbrel")]
+#[allow(clippy::collapsible_match, clippy::unnecessary_unwrap)]
 pub mod umbrel;
 
 // A port map as used during creating the port map
