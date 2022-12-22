@@ -1,12 +1,10 @@
 use anyhow::{bail, Result};
+use cached::proc_macro::cached;
+use octocrab::models::repos::Tag;
 use semver::Version;
 
-pub async fn check_updates(
-    owner: &String,
-    repo: &String,
-    current_version: &Version,
-    include_pre: bool,
-) -> Result<String> {
+#[cached(result = true)]
+pub async fn get_tags(owner: String, repo: String) -> Result<Vec<Tag>> {
     let octocrab = octocrab::instance();
     let tags = octocrab
         .repos(owner, repo)
@@ -14,6 +12,16 @@ pub async fn check_updates(
         .send()
         .await?
         .take_items();
+    Ok(tags)
+}
+
+pub async fn check_updates(
+    owner: &String,
+    repo: &String,
+    current_version: &Version,
+    include_pre: bool,
+) -> Result<String> {
+    let tags = get_tags(owner.to_owned(), repo.to_owned()).await?;
     for tag in tags {
         let tag = tag.name;
         // Remove the v prefix if it exists

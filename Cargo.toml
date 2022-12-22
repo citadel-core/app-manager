@@ -37,6 +37,7 @@ libz-sys = { version = "1.1.0", default-features = false, features = ["libc", "s
 void = { version = "1.0.2", optional = true }
 rand = { version = "0.8.5", optional = true }
 sha1 = { version = "0.10.5", optional = true }
+cached = "0.41.0"
 
 [profile.release]
 strip = true

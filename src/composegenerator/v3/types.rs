@@ -132,7 +132,7 @@ pub struct SchemaMetadata {
     /// A longer description of the app
     pub description: String,
     /// The awesome people behind the app
-    pub developers: HashMap<String, String>,
+    pub developers: BTreeMap<String, String>,
     /// The services the app depends on.
     /// This can also contain an array like [c-lightning, lnd] if your app requires one of two
     /// dependencies to function.

@@ -187,38 +187,46 @@ fn main() {
                     } else {
                         let subdirs = std::fs::read_dir(path).expect("Failed to read directory");
                         for subdir in subdirs {
-                            let subdir = subdir.unwrap_or_else(|_| {
-                                panic!("Failed to read subdir/file in {}", path.display())
-                            });
-                            let file_type = subdir.file_type().unwrap_or_else(|_| {
-                                panic!(
-                                    "Failed to get filetype of {}/{}",
-                                    path.display(),
-                                    subdir.file_name().to_string_lossy()
-                                )
-                            });
-                            if file_type.is_file() {
+                            let subdir = subdir.expect("Failed to get subdir").path();
+                            if !subdir.is_dir() {
                                 continue;
-                            } else if file_type.is_symlink() {
-                                eprintln!(
-                                    "Symlinks like {}/{} are not supported yet!",
-                                    path.display(),
-                                    subdir.file_name().to_string_lossy()
-                                );
-                            } else if file_type.is_dir() {
-                                let sub_app_yml = subdir.path().join("app.yml");
-                                if sub_app_yml.is_file() {
-                                    update_app_yml(&sub_app_yml, include_prerelease).await;
-                                } else {
+                            }
+                            let subdirs =
+                                std::fs::read_dir(subdir).expect("Failed to read directory");
+                            for subdir in subdirs {
+                                let subdir = subdir.unwrap_or_else(|_| {
+                                    panic!("Failed to read subdir/file in {}", path.display())
+                                });
+                                let file_type = subdir.file_type().unwrap_or_else(|_| {
+                                    panic!(
+                                        "Failed to get filetype of {}/{}",
+                                        path.display(),
+                                        subdir.file_name().to_string_lossy()
+                                    )
+                                });
+                                if file_type.is_file() {
+                                    continue;
+                                } else if file_type.is_symlink() {
                                     eprintln!(
-                                        "{}/{}/app.yml does not exist or is not a file!",
+                                        "Symlinks like {}/{} are not supported yet!",
                                         path.display(),
                                         subdir.file_name().to_string_lossy()
                                     );
-                                    continue;
+                                } else if file_type.is_dir() {
+                                    let sub_app_yml = subdir.path().join("app.yml");
+                                    if sub_app_yml.is_file() {
+                                        update_app_yml(&sub_app_yml, include_prerelease).await;
+                                    } else {
+                                        eprintln!(
+                                            "{}/{}/app.yml does not exist or is not a file!",
+                                            path.display(),
+                                            subdir.file_name().to_string_lossy()
+                                        );
+                                        continue;
+                                    }
+                                } else {
+                                    unreachable!();
                                 }
-                            } else {
-                                unreachable!();
                             }
                         }
                     }

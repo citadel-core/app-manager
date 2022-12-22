@@ -88,7 +88,7 @@ pub struct Container {
     pub hidden_services: Option<HiddenServices>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Default, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Clone, Default, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 #[serde(rename_all = "camelCase")]
 pub struct InputMetadata {
@@ -101,7 +101,7 @@ pub struct InputMetadata {
     /// A short tagline for the app
     pub tagline: String,
     // Developer name -> their website
-    pub developers: HashMap<String, String>,
+    pub developers: BTreeMap<String, String>,
     /// A description of the app
     pub description: String,
     #[serde(default)]

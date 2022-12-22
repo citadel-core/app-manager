@@ -3,6 +3,7 @@ use std::collections::{BTreeMap, HashMap};
 use anyhow::{bail, Result};
 use tracing::warn;
 
+use crate::bmap;
 use crate::composegenerator::compose::types::{
     Command, ComposeSpecification, EnvVars, StringOrIntOrBool,
 };
@@ -12,7 +13,6 @@ use crate::composegenerator::v4::types::{
     AppYml, Container, InputMetadata as CitadelMetadata, PortsDefinition, StringOrMap,
 };
 use crate::utils::find_env_vars;
-use crate::{bmap, map};
 
 pub fn convert_metadata(metadata: Metadata) -> CitadelMetadata {
     let deps: Vec<Permissions> = metadata
@@ -37,7 +37,7 @@ pub fn convert_metadata(metadata: Metadata) -> CitadelMetadata {
         category: metadata.category,
         tagline: metadata.tagline,
         permissions: deps,
-        developers: map! {
+        developers: bmap! {
             metadata.developer => metadata.website
         },
         gallery: metadata.gallery,
