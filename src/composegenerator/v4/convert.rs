@@ -306,7 +306,7 @@ fn convert_volumes<'a>(
                         }
                     }
                     "jwt-public-key" => {
-                        if let StringOrMap::String(jwt_mount) = value {
+                        if let StringOrMap::String(jwt_pubkey_mount) = value {
                             service
                                 .volumes
                                 .push(format!("jwt-public-key:{}:ro", jwt_pubkey_mount));
