@@ -341,22 +341,10 @@ pub fn convert_compose(
             port_priority: None,
             required_ports: if required_udp_ports.is_empty() && required_tcp_ports.is_empty() {
                 None
-            } else if required_udp_ports.is_empty() {
-                Some(PortsDefinition {
-                    tcp: Some(required_tcp_ports),
-                    udp: None,
-                    http: None,
-                })
-            } else if required_tcp_ports.is_empty() {
-                Some(PortsDefinition {
-                    tcp: None,
-                    udp: Some(required_udp_ports),
-                    http: None,
-                })
             } else {
                 Some(PortsDefinition {
-                    tcp: Some(required_tcp_ports),
-                    udp: Some(required_udp_ports),
+                    tcp: if required_tcp_ports.is_empty() { None } else { Some(required_tcp_ports) },
+                    udp: if required_udp_ports.is_empty() { None } else { Some(required_udp_ports) },
                     http: None,
                 })
             },
