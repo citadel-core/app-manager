@@ -300,9 +300,9 @@ where
 /// library provides both a default `Token` lexer, as well as an AST `Builder`.
 ///
 /// ```
-/// use conch_parser::ast::builder::{Builder, RcBuilder};
-/// use conch_parser::lexer::Lexer;
-/// use conch_parser::parse::Parser;
+/// use citadel_apps::conch::ast::builder::{Builder, RcBuilder};
+/// use citadel_apps::conch::lexer::Lexer;
+/// use citadel_apps::conch::parse::Parser;
 ///
 /// let source = "echo hello world";
 /// let lexer = Lexer::new(source.chars());
@@ -314,8 +314,8 @@ where
 /// you can also use the `DefaultParser` type alias for a simpler setup.
 ///
 /// ```
-/// use conch_parser::lexer::Lexer;
-/// use conch_parser::parse::DefaultParser;
+/// use citadel_apps::conch::lexer::Lexer;
+/// use citadel_apps::conch::parse::DefaultParser;
 ///
 /// let source = "echo hello world";
 /// let lexer = Lexer::new(source.chars());

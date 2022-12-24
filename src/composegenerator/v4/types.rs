@@ -18,6 +18,7 @@ pub enum HiddenServices {
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct PortsDefinition {
     pub tcp: Option<HashMap<u16, u16>>,
+    pub http: Option<HashMap<u16, u16>>,
     pub udp: Option<HashMap<u16, u16>>,
 }
 
@@ -86,6 +87,9 @@ pub struct Container {
     pub assign_fixed_ip: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub hidden_services: Option<HiddenServices>,
+    #[serde(default = "bool::default")]
+    /// Set this to true to avoid having Caddy in front
+    pub direct_tcp: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug, PartialEq, Eq, Hash)]

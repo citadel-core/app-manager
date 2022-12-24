@@ -8,7 +8,7 @@ use crate::{
     composegenerator::{
         compose::types::StringOrIntOrBool,
         output::types::{ComposeSpecification, NetworkEntry, Service},
-        types::Permissions,
+        types::{CaddyEntry, Permissions},
     },
 };
 use crate::{
@@ -92,8 +92,9 @@ fn configure_ports(
     main_container: &str,
     output: &mut ComposeSpecification,
     port_map: &Option<HashMap<String, Vec<PortMapElement>>>,
-) -> Result<()> {
+) -> Result<Vec<CaddyEntry>> {
     let services = output.services.as_mut().unwrap();
+    let mut caddy_entries = Vec::new();
     for (service_name, service) in services {
         let original_definition = containers.get(service_name).unwrap();
         if service_name != main_container && original_definition.port.is_some() {
@@ -122,9 +123,17 @@ fn configure_ports(
                 public_port = Some(&fake_port);
             }
             if let Some(port_map_elem) = public_port {
-                service
-                    .ports
-                    .push(format!("{}:{}", port_map_elem.public_port, internal_port));
+                if original_definition.direct_tcp {
+                    service
+                        .ports
+                        .push(format!("{}:{}", port_map_elem.public_port, internal_port));
+                } else {
+                    caddy_entries.push(CaddyEntry {
+                        internal_port,
+                        public_port: port_map_elem.public_port,
+                        container_name: service_name.to_owned(),
+                    });
+                }
             } else {
                 bail!("Main container port not found in port map");
             }
@@ -153,10 +162,19 @@ fn configure_ports(
                     service.ports.push(format!("{}:{}/udp", port.0, port.1));
                 }
             }
+            if let Some(http_ports) = &required_ports.http {
+                for (public_port, internal_port) in http_ports {
+                    caddy_entries.push(CaddyEntry {
+                        internal_port: *internal_port,
+                        public_port: *public_port,
+                        container_name: service_name.to_owned(),
+                    })
+                }
+            }
         }
     }
 
-    Ok(())
+    Ok(caddy_entries)
 }
 
 fn define_ip_addresses(
@@ -573,7 +591,7 @@ pub fn convert_config(
         )?;
     }
     // We can now finalize the process by parsing some of the remaining values
-    configure_ports(&app.services, main_service, &mut spec, &app_port_map)?;
+    let caddy_entries = configure_ports(&app.services, main_service, &mut spec, &app_port_map)?;
 
     define_ip_addresses(app_name, &app.services, main_service, &mut spec)?;
 
@@ -637,6 +655,7 @@ pub fn convert_config(
         ),
         new_i2p_entries: get_i2p_tunnels(app_name, &app.services, main_service, main_port, &ips),
         metadata,
+        caddy_entries,
     };
 
     // And we're done
@@ -650,7 +669,7 @@ mod test {
         bmap,
         composegenerator::{
             output::types::{ComposeSpecification, NetworkEntry, Service},
-            types::{OutputMetadata, Permissions, ResultYml},
+            types::{CaddyEntry, OutputMetadata, Permissions, ResultYml},
             v4::types::{AppYml, Container, InputMetadata},
         },
         map,
@@ -702,7 +721,7 @@ mod test {
                         image: Some("ghcr.io/runcitadel/example:main".to_string()),
                         user: Some("1000:1000".to_string()),
                         depends_on: Some(vec!["database".to_string()]),
-                        ports: vec!["3000:3000".to_string()],
+                        ports: vec![],
                         networks: Some(bmap! {
                             "default" => NetworkEntry {
                                 ipv4_address: Some("$APP_EXAMPLE_APP_MAIN_IP".to_string())
@@ -746,6 +765,7 @@ mod test {
             },
             new_tor_entries: "HiddenServiceDir /var/lib/tor/app-example-app\nHiddenServicePort 80 <app-example-app-main-ip>:3000\n".to_string(),
             new_i2p_entries: "[app-example-app-main]\nhost = <app-example-app-main-ip>\nport = 3000\nkeys = app-example-app-main.dat\n".to_string(),
+            caddy_entries: vec![CaddyEntry { public_port: 3000, internal_port: 3000, container_name: "main".to_string() }],
         };
         assert_eq!(expected_result, result.unwrap());
     }

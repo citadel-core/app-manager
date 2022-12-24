@@ -6,14 +6,16 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 
-use crate::composegenerator::{
+use ::tera::Context;
+
+use crate::{composegenerator::{
     convert_config, load_config_as_v4,
     types::OutputMetadata,
     v4::{
         types::{PortMapElement, PortPriority, StringOrMap},
         utils::{derive_entropy, get_main_container},
     },
-};
+}, constants::DEFAULT_CADDY_ENTRY_TEMPLATE};
 
 use anyhow::Result;
 
@@ -373,6 +375,9 @@ pub fn convert_dir(citadel_root: &str) -> Result<()> {
 
     let mut tor_entries: Vec<String> = Vec::new();
     let mut i2p_entries: Vec<String> = Vec::new();
+
+    let mut caddy_entries = HashMap::new();
+
     for app in apps {
         let app = app.expect("Error reading app directory!");
         let app_id = app.file_name();
@@ -427,6 +432,7 @@ pub fn convert_dir(citadel_root: &str) -> Result<()> {
                 }
             }
             app_registry.push(metadata);
+            caddy_entries.insert(app_id.to_owned(), result_data.caddy_entries);
         } else {
             // Delete docker-compose.yml if it exists
             if docker_compose_yml_path.exists() {
@@ -480,6 +486,46 @@ pub fn convert_dir(citadel_root: &str) -> Result<()> {
 
     // Part 8: Preprocess config jinja files
     preprocessing::preprocess_config_files(citadel_root, &citadel_root.join("apps"))?;
+
+    // Part 9: Configure caddy
+    {
+        let caddy_file = citadel_root.join("caddy").join("Caddyfile");
+        let caddy_entry_template = citadel_root.join("templates").join("Caddyfile-entry.jinja");
+        if !caddy_entry_template.is_file() {
+            let mut caddy_entry_template_file =
+                std::fs::File::create(&caddy_entry_template).expect("Error opening Caddyfile-entry.jinja!");
+            caddy_entry_template_file
+                .write_all(DEFAULT_CADDY_ENTRY_TEMPLATE.as_bytes())
+                .expect("Error writing Caddyfile-entry.jinja!");
+        }
+        let caddy_entry_tmpl = std::fs::read_to_string(caddy_entry_template)
+            .expect("Error reading Caddyfile-entry.jinja!");
+        let mut data_to_append = String::new();
+        for (app_id, entries) in caddy_entries {
+            for entry in entries {
+                let mut tera_context = Context::new();
+                tera_context.insert("PUBLIC_PORT", &entry.public_port);
+                tera_context.insert("INTERNAL_PORT", &entry.internal_port);
+                let ip_name = format!(
+                    "APP_{}_{}_IP",
+                    app_id.to_uppercase().replace('-', "_"),
+                    entry.container_name.to_uppercase().replace('-', "_")
+                );
+                let ip = ip_map.get(&ip_name).unwrap();
+                tera_context.insert("CONTAINER_IP", &ip);
+                let processed_entry = ::tera::Tera::one_off(&caddy_entry_tmpl, &tera_context, false)
+                    .expect("Error rendering Caddyfile-entry.jinja!");
+                data_to_append.push_str(&processed_entry);
+            }
+        }
+        let mut caddy_file = std::fs::OpenOptions::new()
+            .append(true)
+            .open(caddy_file)
+            .expect("Error opening Caddyfile!");
+        caddy_file
+            .write_all(data_to_append.as_bytes())
+            .expect("Error writing Caddyfile!");
+    }
 
     Ok(())
 }

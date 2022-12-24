@@ -75,9 +75,18 @@ pub struct OutputMetadata {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub struct CaddyEntry {
+    pub public_port: u16,
+    pub internal_port: u16,
+    pub container_name: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct ResultYml {
     pub new_tor_entries: String,
     pub new_i2p_entries: String,
+    pub caddy_entries: Vec<CaddyEntry>,
     pub spec: ComposeSpecification,
     pub metadata: OutputMetadata,
 }

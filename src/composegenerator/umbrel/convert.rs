@@ -345,16 +345,19 @@ pub fn convert_compose(
                 Some(PortsDefinition {
                     tcp: Some(required_tcp_ports),
                     udp: None,
+                    http: None,
                 })
             } else if required_tcp_ports.is_empty() {
                 Some(PortsDefinition {
                     tcp: None,
                     udp: Some(required_udp_ports),
+                    http: None,
                 })
             } else {
                 Some(PortsDefinition {
                     tcp: Some(required_tcp_ports),
                     udp: Some(required_udp_ports),
+                    http: None,
                 })
             },
             mounts: Some(mounts),
@@ -365,6 +368,7 @@ pub fn convert_compose(
             },
             hidden_services: None,
             cap_add: service_def.cap_add,
+            direct_tcp: false,
         };
         result_services.insert(service_name, new_service);
     }

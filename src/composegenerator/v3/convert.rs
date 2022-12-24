@@ -56,6 +56,7 @@ pub fn v3_to_v4(app: AppYmlV3, installed_services: &Option<&Vec<String>>) -> typ
             let mut required_ports_def = types_v4::PortsDefinition {
                 udp: None,
                 tcp: None,
+                http: None,
             };
             if let Some(tcp_ports) = container.required_ports {
                 let mut map = HashMap::<u16, u16>::with_capacity(tcp_ports.capacity());
@@ -170,6 +171,7 @@ pub fn v3_to_v4(app: AppYmlV3, installed_services: &Option<&Vec<String>>) -> typ
                     }
                 }),
                 cap_add: None,
+                direct_tcp: false,
             },
         );
     }
