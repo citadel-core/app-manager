@@ -8,14 +8,17 @@ use serde::{Deserialize, Serialize};
 
 use ::tera::Context;
 
-use crate::{composegenerator::{
-    convert_config, load_config_as_v4,
-    types::OutputMetadata,
-    v4::{
-        types::{PortMapElement, PortPriority, StringOrMap},
-        utils::{derive_entropy, get_main_container},
+use crate::{
+    composegenerator::{
+        convert_config, load_config_as_v4,
+        types::OutputMetadata,
+        v4::{
+            types::{PortMapElement, PortPriority, StringOrMap},
+            utils::{derive_entropy, get_main_container},
+        },
     },
-}, constants::DEFAULT_CADDY_ENTRY_TEMPLATE};
+    constants::DEFAULT_CADDY_ENTRY_TEMPLATE,
+};
 
 use anyhow::Result;
 
@@ -49,10 +52,18 @@ static RESERVED_PORTS: [u16; 4] = [
 ];
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+struct HttpsOptions {
+    #[serde(default = "bool::default")]
+    agreed_lets_encrypt_tos: bool,
+    // user_email: String,
+    app_domains: HashMap<String, String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct UserJson {
     #[serde(rename = "installedApps")]
     installed_apps: Vec<String>,
-    // We ignore other properties for now because we do not need them
+    https: Option<HttpsOptions>,
 }
 
 pub fn convert_dir(citadel_root: &str) -> Result<()> {
@@ -66,11 +77,13 @@ pub fn convert_dir(citadel_root: &str) -> Result<()> {
     });
 
     let mut services = Vec::<String>::new();
+    let mut https_options = None;
     let user_json = std::fs::File::open(citadel_root.join("db").join("user.json"));
     if let Ok(user_json) = user_json {
         let user_json = serde_json::from_reader::<_, UserJson>(user_json);
         if let Ok(user_json) = user_json {
             services = user_json.installed_apps;
+            https_options = user_json.https;
         }
     }
     services.append(&mut vec!["bitcoind".to_string()]);
@@ -492,8 +505,8 @@ pub fn convert_dir(citadel_root: &str) -> Result<()> {
         let caddy_file = citadel_root.join("caddy").join("Caddyfile");
         let caddy_entry_template = citadel_root.join("templates").join("Caddyfile-entry.jinja");
         if !caddy_entry_template.is_file() {
-            let mut caddy_entry_template_file =
-                std::fs::File::create(&caddy_entry_template).expect("Error opening Caddyfile-entry.jinja!");
+            let mut caddy_entry_template_file = std::fs::File::create(&caddy_entry_template)
+                .expect("Error opening Caddyfile-entry.jinja!");
             caddy_entry_template_file
                 .write_all(DEFAULT_CADDY_ENTRY_TEMPLATE.as_bytes())
                 .expect("Error writing Caddyfile-entry.jinja!");
@@ -504,7 +517,7 @@ pub fn convert_dir(citadel_root: &str) -> Result<()> {
         for (app_id, entries) in caddy_entries {
             for entry in entries {
                 let mut tera_context = Context::new();
-                tera_context.insert("PUBLIC_PORT", &entry.public_port);
+                tera_context.insert("PUBLIC_ADDR", &format!(":{}", entry.public_port));
                 tera_context.insert("INTERNAL_PORT", &entry.internal_port);
                 let ip_name = format!(
                     "APP_{}_{}_IP",
@@ -513,9 +526,40 @@ pub fn convert_dir(citadel_root: &str) -> Result<()> {
                 );
                 let ip = ip_map.get(&ip_name).unwrap();
                 tera_context.insert("CONTAINER_IP", &ip);
-                let processed_entry = ::tera::Tera::one_off(&caddy_entry_tmpl, &tera_context, false)
-                    .expect("Error rendering Caddyfile-entry.jinja!");
+                let processed_entry =
+                    ::tera::Tera::one_off(&caddy_entry_tmpl, &tera_context, false)
+                        .expect("Error rendering Caddyfile-entry.jinja!");
                 data_to_append.push_str(&processed_entry);
+                if entry.is_primary
+                    && https_options.is_some()
+                    && https_options.as_ref().unwrap().agreed_lets_encrypt_tos
+                    && https_options
+                        .as_ref()
+                        .unwrap()
+                        .app_domains
+                        .contains_key(&app_id)
+                {
+                    let domain = https_options
+                        .as_ref()
+                        .unwrap()
+                        .app_domains
+                        .get(&app_id)
+                        .unwrap();
+                    let mut tera_context = Context::new();
+                    tera_context.insert("PUBLIC_ADDR", domain);
+                    tera_context.insert("INTERNAL_PORT", &entry.internal_port);
+                    let ip_name = format!(
+                        "APP_{}_{}_IP",
+                        app_id.to_uppercase().replace('-', "_"),
+                        entry.container_name.to_uppercase().replace('-', "_")
+                    );
+                    let ip = ip_map.get(&ip_name).unwrap();
+                    tera_context.insert("CONTAINER_IP", &ip);
+                    let processed_entry =
+                        ::tera::Tera::one_off(&caddy_entry_tmpl, &tera_context, false)
+                            .expect("Error rendering Caddyfile-entry.jinja!");
+                    data_to_append.push_str(&processed_entry);
+                }
             }
         }
         let mut caddy_file = std::fs::OpenOptions::new()

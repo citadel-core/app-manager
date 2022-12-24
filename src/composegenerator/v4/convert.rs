@@ -132,6 +132,7 @@ fn configure_ports(
                         internal_port,
                         public_port: port_map_elem.public_port,
                         container_name: service_name.to_owned(),
+                        is_primary: true,
                     });
                 }
             } else {
@@ -168,6 +169,7 @@ fn configure_ports(
                         internal_port: *internal_port,
                         public_port: *public_port,
                         container_name: service_name.to_owned(),
+                        is_primary: false,
                     })
                 }
             }
@@ -634,6 +636,7 @@ pub fn convert_config(
         port: main_port_host.unwrap_or(main_port),
         internal_port: main_port,
         release_notes: app.metadata.release_notes,
+        supports_https: caddy_entries.iter().any(|entry| entry.is_primary),
     };
     if !missing_deps.is_empty() {
         metadata.missing_dependencies = Some(missing_deps);
@@ -686,7 +689,7 @@ mod test {
                 version: "1.0.0".to_string(),
                 category: "Example category".to_string(),
                 tagline: "The only example app for Citadel you will ever need".to_string(),
-                developers: map! {
+                developers: bmap! {
                     "Citadel team".to_string() => "runcitadel.space".to_string()
                 },
                 permissions: vec![Permissions::OneDependency("lnd".to_string())],
@@ -748,7 +751,7 @@ mod test {
                 version: "1.0.0".to_string(),
                 category: "Example category".to_string(),
                 tagline: "The only example app for Citadel you will ever need".to_string(),
-                developers: map! {
+                developers: bmap! {
                     "Citadel team".to_string() => "runcitadel.space".to_string()
                 },
                 permissions: vec![Permissions::OneDependency("lnd".to_string())],
@@ -765,7 +768,7 @@ mod test {
             },
             new_tor_entries: "HiddenServiceDir /var/lib/tor/app-example-app\nHiddenServicePort 80 <app-example-app-main-ip>:3000\n".to_string(),
             new_i2p_entries: "[app-example-app-main]\nhost = <app-example-app-main-ip>\nport = 3000\nkeys = app-example-app-main.dat\n".to_string(),
-            caddy_entries: vec![CaddyEntry { public_port: 3000, internal_port: 3000, container_name: "main".to_string() }],
+            caddy_entries: vec![CaddyEntry { public_port: 3000, internal_port: 3000, container_name: "main".to_string(), is_primary: true }],
         };
         assert_eq!(expected_result, result.unwrap());
     }

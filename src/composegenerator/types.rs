@@ -71,6 +71,7 @@ pub struct OutputMetadata {
     pub internal_port: u16,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub release_notes: Option<BTreeMap<String, String>>,
+    pub supports_https: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
@@ -79,6 +80,7 @@ pub struct CaddyEntry {
     pub public_port: u16,
     pub internal_port: u16,
     pub container_name: String,
+    pub is_primary: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
