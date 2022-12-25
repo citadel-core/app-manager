@@ -504,9 +504,10 @@ pub fn convert_dir(citadel_root: &str) -> Result<()> {
         let caddy_entry_tmpl = std::fs::read_to_string(caddy_entry_template)?;
         let mut tera_context = Context::new();
         tera_context.insert("caddy_entries", &caddy_entries);
-        for (var, value) in ip_map {
-            tera_context.insert(var.as_str(), &value);
+        for (var, value) in ip_map.iter() {
+            tera_context.insert(var, value);
         }
+        tera_context.insert("ip_map", &ip_map);
         #[allow(deprecated)]
         if let Ok(dot_env) = dotenv::from_filename_iter(citadel_root.join(".env")) {
             for env_var in dot_env {
