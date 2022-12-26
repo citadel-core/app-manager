@@ -338,7 +338,7 @@ fn convert_volumes<'a>(
                         if permissions.contains(&key) {
                             if let StringOrMap::String(string) = value {
                                 service.volumes.push(format!(
-                                    "${{CITADEL_APP_DATA}}/{}/${{APP_{}_DATA_DIR}}:{}",
+                                    "${{CITADEL_APP_DATA}}/{}/${{APP_{}_SHARED_SUBDIR}}:{}",
                                     key,
                                     key.to_uppercase().replace('-', "_"),
                                     string

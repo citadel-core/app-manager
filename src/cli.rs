@@ -363,7 +363,7 @@ pub fn convert_dir(citadel_root: &str) -> Result<()> {
         }
         for (key, value) in &data_dirs {
             let to_append = format!(
-                "{}_DATA_DIR={}",
+                "APP_{}_SHARED_SUBDIR={}",
                 key.to_uppercase().replace('-', "_"),
                 value
             );
