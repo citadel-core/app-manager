@@ -178,6 +178,19 @@ pub fn convert_dir(citadel_root: &str) -> Result<()> {
                     },
                 );
             }
+        } else if RESERVED_PORTS.contains(&suggested_port) {
+            let new_port = get_new_port(app, container, suggested_port);
+            port_map_cache.insert(
+                new_port,
+                PortCacheMapEntry {
+                    app: app.to_string(),
+                    internal_port: suggested_port,
+                    container: container.to_string(),
+                    dynamic,
+                    implements,
+                    priority,
+                },
+            );
         } else {
             port_map_cache.insert(
                 suggested_port,
