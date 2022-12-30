@@ -68,6 +68,7 @@ pub struct OutputMetadata {
     pub internal_port: u16,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub release_notes: Option<BTreeMap<String, String>>,
+    pub hidden_services: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]

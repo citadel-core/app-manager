@@ -322,8 +322,9 @@ fn get_hidden_services(
     main_container: &str,
     main_port: u16,
     ip_addresses: &HashMap<String, String>,
-) -> String {
+) -> (String, Vec<String>) {
     let mut result = String::new();
+    let mut service_list = Vec::new();
     for service_name in containers.keys() {
         let original_definition = containers.get(service_name).unwrap();
         if original_definition.network_mode == Some("host".to_string()) {
@@ -345,6 +346,7 @@ fn get_hidden_services(
                     .unwrap_or(&format!("<app-{}-{}-ip>", app_name_slug, service_name_slug)),
                 main_port
             );
+            service_list.push("app-".to_owned() + &app_name_slug);
             result += hidden_service_string.as_str();
         }
         if let Some(hidden_services) = &original_definition.hidden_services {
@@ -355,6 +357,7 @@ fn get_hidden_services(
                             "HiddenServiceDir /var/lib/tor/app-{}-{}\n",
                             app_name_slug, service_name_slug
                         );
+                        service_list.push(format!("app-{}-{}", app_name_slug, service_name_slug));
                         result += hidden_service_string.as_str();
                     }
                     for port in simple_map {
@@ -382,6 +385,11 @@ fn get_hidden_services(
                             app_name_slug,
                             element.0.to_lowercase().replace('_', "-")
                         );
+                        service_list.push(format!(
+                            "app-{}-{}",
+                            app_name_slug,
+                            element.0.to_lowercase().replace('_', "-")
+                        ));
                         result += hidden_service_string.as_str();
                         for port in element.1 {
                             let port_string = format!(
@@ -406,7 +414,7 @@ fn get_hidden_services(
         }
     }
 
-    result
+    (result, service_list)
 }
 
 fn get_i2p_tunnels(
@@ -562,6 +570,19 @@ pub fn convert_config(
         &app.metadata.permissions,
         installed_services.as_ref().unwrap_or(&vec![]),
     );
+
+    let mut ips = HashMap::new();
+    if let Some(ip_addresses) = ip_addresses {
+        ips = ip_addresses.clone();
+    }
+
+    let (new_tor_entries, hidden_services) = get_hidden_services(
+        app_name,
+        app.services.clone(),
+        &main_service,
+        main_port,
+        &ips,
+    );
     let mut metadata = OutputMetadata {
         id: app_name.to_string(),
         name: app.metadata.name,
@@ -585,25 +606,15 @@ pub fn convert_config(
         port: main_port_host.unwrap_or(main_port),
         internal_port: main_port,
         release_notes: app.metadata.release_notes,
+        hidden_services,
     };
     if !missing_deps.is_empty() {
         metadata.missing_dependencies = Some(missing_deps);
     }
 
-    let mut ips = HashMap::new();
-    if let Some(ip_addresses) = ip_addresses {
-        ips = ip_addresses.clone();
-    }
-
     let result = ResultYml {
         spec,
-        new_tor_entries: get_hidden_services(
-            app_name,
-            app.services.clone(),
-            &main_service,
-            main_port,
-            &ips,
-        ),
+        new_tor_entries,
         new_i2p_entries: get_i2p_tunnels(app_name, app.services, &main_service, main_port, &ips),
         metadata,
     };
