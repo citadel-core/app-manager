@@ -722,6 +722,7 @@ mod test {
                 compatible: false,
                 port: 3000,
                 internal_port: 3000,
+                hidden_services: ["app-example-app".to_string()],
                 ..Default::default()
             },
             new_tor_entries: "HiddenServiceDir /var/lib/tor/app-example-app\nHiddenServicePort 80 <app-example-app-main-ip>:3000\n".to_string(),
