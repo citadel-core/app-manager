@@ -72,6 +72,7 @@ pub struct OutputMetadata {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub release_notes: Option<BTreeMap<String, String>>,
     pub supports_https: bool,
+    pub hidden_services: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
