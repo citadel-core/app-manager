@@ -366,6 +366,7 @@ fn get_hidden_services(
     main_container: &str,
     main_port: u16,
     ip_addresses: &HashMap<String, String>,
+    primary_caddy_entry: &Option<&CaddyEntry>,
 ) -> (String, Vec<String>) {
     let mut result = String::new();
     let mut service_list = Vec::new();
@@ -379,18 +380,34 @@ fn get_hidden_services(
         let app_name_slug = app_name.to_lowercase().replace('_', "-");
         let service_name_slug = service_name.to_lowercase().replace('_', "-");
         if service_name == main_container {
-            let hidden_service_string = format!(
-                "HiddenServiceDir /var/lib/tor/app-{}\nHiddenServicePort 80 {}:{}\n",
-                app_name_slug,
-                ip_addresses
-                    .get(&format!(
-                        "APP_{app_name_uppercase}_{service_name_uppercase}_IP"
-                    ))
-                    .unwrap_or(&format!("<app-{app_name_slug}-{service_name_slug}-ip>")),
-                main_port
-            );
+            if let Some(primary_caddy_entry) = primary_caddy_entry {
+                debug_assert!(
+                    primary_caddy_entry.is_primary,
+                    "Caddy entry that is not primary was passed to get_hidden_servies"
+                );
+                let hidden_service_string = format!(
+                    "HiddenServiceDir /var/lib/tor/app-{}\nHiddenServicePort 80 {}:{}\n",
+                    app_name_slug,
+                    ip_addresses
+                        .get("CADDY_IP")
+                        .unwrap_or(&"caddy-ip>".to_string()),
+                    primary_caddy_entry.public_port
+                );
+                result += hidden_service_string.as_str();
+            } else {
+                let hidden_service_string = format!(
+                    "HiddenServiceDir /var/lib/tor/app-{}\nHiddenServicePort 80 {}:{}\n",
+                    app_name_slug,
+                    ip_addresses
+                        .get(&format!(
+                            "APP_{app_name_uppercase}_{service_name_uppercase}_IP"
+                        ))
+                        .unwrap_or(&format!("<app-{app_name_slug}-{service_name_slug}-ip>")),
+                    main_port
+                );
+                result += hidden_service_string.as_str();
+            }
             service_list.push("app-".to_owned() + &app_name_slug);
-            result += hidden_service_string.as_str();
         }
         if let Some(hidden_services) = &original_definition.hidden_services {
             match hidden_services {
@@ -461,6 +478,7 @@ fn get_i2p_tunnels(
     main_container: &str,
     main_port: u16,
     ip_addresses: &HashMap<String, String>,
+    primary_caddy_entry: &Option<&CaddyEntry>,
 ) -> String {
     let mut result = String::new();
     for service_name in containers.keys() {
@@ -473,20 +491,39 @@ fn get_i2p_tunnels(
         let app_name_slug = app_name.to_lowercase().replace('_', "-");
         let service_name_slug = service_name.to_lowercase().replace('_', "-");
         if service_name == main_container {
-            let hidden_service_string = format!(
-                "[app-{}-{}]\nhost = {}\nport = {}\nkeys = app-{}-{}.dat\n",
-                app_name_slug,
-                service_name_slug,
-                ip_addresses
-                    .get(&format!(
-                        "APP_{app_name_uppercase}_{service_name_uppercase}_IP"
-                    ))
-                    .unwrap_or(&format!("<app-{app_name_slug}-{service_name_slug}-ip>")),
-                main_port,
-                app_name_slug,
-                service_name_slug
-            );
-            result += hidden_service_string.as_str();
+            if let Some(primary_caddy_entry) = primary_caddy_entry {
+                debug_assert!(
+                    primary_caddy_entry.is_primary,
+                    "Caddy entry that is not primary was passed to get_hidden_servies"
+                );
+                let hidden_service_string = format!(
+                    "[app-{}-{}]\nhost = {}\nport = {}\nkeys = app-{}-{}.dat\n",
+                    app_name_slug,
+                    service_name_slug,
+                    ip_addresses
+                        .get("CADDY_IP")
+                        .unwrap_or(&"caddy-ip>".to_string()),
+                    primary_caddy_entry.public_port,
+                    app_name_slug,
+                    service_name_slug
+                );
+                result += hidden_service_string.as_str();
+            } else {
+                let hidden_service_string = format!(
+                    "[app-{}-{}]\nhost = {}\nport = {}\nkeys = app-{}-{}.dat\n",
+                    app_name_slug,
+                    service_name_slug,
+                    ip_addresses
+                        .get(&format!(
+                            "APP_{app_name_uppercase}_{service_name_uppercase}_IP"
+                        ))
+                        .unwrap_or(&format!("<app-{app_name_slug}-{service_name_slug}-ip>")),
+                    main_port,
+                    app_name_slug,
+                    service_name_slug
+                );
+                result += hidden_service_string.as_str();
+            }
         }
         if original_definition.hidden_services.is_some() {
             tracing::info!("Multi-port hidden services are not yet supported for I2P on Citadel!");
@@ -618,12 +655,14 @@ pub fn convert_config(
         ips = ip_addresses.clone();
     }
 
+    let primary_caddy_entry = caddy_entries.iter().find(|entry| entry.is_primary);
     let (new_tor_entries, hidden_services) = get_hidden_services(
         app_name,
         &app.services,
         main_service,
         main_port,
         &ips,
+        &primary_caddy_entry,
     );
     let mut metadata = OutputMetadata {
         id: app_name.to_string(),
@@ -659,7 +698,14 @@ pub fn convert_config(
     let result = ResultYml {
         spec,
         new_tor_entries,
-        new_i2p_entries: get_i2p_tunnels(app_name, &app.services, main_service, main_port, &ips),
+        new_i2p_entries: get_i2p_tunnels(
+            app_name,
+            &app.services,
+            main_service,
+            main_port,
+            &ips,
+            &primary_caddy_entry,
+        ),
         metadata,
         caddy_entries,
     };
