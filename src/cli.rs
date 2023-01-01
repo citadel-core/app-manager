@@ -369,7 +369,7 @@ pub fn convert_dir(citadel_root: &str) -> Result<()> {
                 .expect("Error reading env file!");
         }
         for (key, value) in &ip_map {
-            let to_append = format!("{}={}", key, value);
+            let to_append = format!("{key}={value}");
             if !env_string.contains(&to_append) {
                 env_string.push_str(&(to_append + "\n"));
             }
@@ -436,7 +436,7 @@ pub fn convert_dir(citadel_root: &str) -> Result<()> {
                 if let Some(ref citadel_seed) = citadel_seed {
                     metadata.default_password = Some(derive_entropy(
                         citadel_seed,
-                        format!("app-{}-seed", app_id).as_str(),
+                        format!("app-{app_id}-seed").as_str(),
                     ));
                 } else {
                     metadata.default_password = Some("Please reboot your node, default password does not seem to be available yet.".to_string());

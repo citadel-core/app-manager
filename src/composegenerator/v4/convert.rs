@@ -206,9 +206,9 @@ fn define_ip_addresses(
     Ok(())
 }
 
-fn validate_service<'a>(
+fn validate_service(
     app_name: &str,
-    permissions: &mut Vec<&'a String>,
+    permissions: &mut Vec<&String>,
     service: &types::Container,
     replace_env_vars: &HashMap<String, String>,
     result: &mut Service,
@@ -240,7 +240,7 @@ fn validate_service<'a>(
                             .filter(|(key, _)| env_vars.contains(&key.as_str()));
                         for (env_var, replacement) in to_replace {
                             let syntax_1 = "$".to_string() + env_var;
-                            let syntax_2 = format!("${{{}}}", env_var);
+                            let syntax_2 = format!("${{{env_var}}}");
                             val = val.replace(&syntax_1, replacement);
                             val = val.replace(&syntax_2, replacement);
                         }
@@ -280,9 +280,9 @@ fn validate_service<'a>(
     Ok(())
 }
 
-fn convert_volumes<'a>(
+fn convert_volumes(
     containers: &HashMap<String, types::Container>,
-    permissions: &[&'a String],
+    permissions: &[&String],
     output: &mut ComposeSpecification,
 ) -> Result<()> {
     let services = output.services.as_mut().unwrap();
@@ -305,8 +305,7 @@ fn convert_volumes<'a>(
                                     host_path.clone()
                                 };
                                 service.volumes.push(format!(
-                                    "${{APP_DATA_DIR}}{}:{}",
-                                    mount_host_dir, container_path
+                                    "${{APP_DATA_DIR}}{mount_host_dir}:{container_path}"
                                 ));
                             }
                         } else {
@@ -320,7 +319,7 @@ fn convert_volumes<'a>(
                         if let StringOrMap::String(bitcoin_path) = value {
                             service
                                 .volumes
-                                .push(format!("${{BITCOIN_DATA_DIR}}:{}", bitcoin_path));
+                                .push(format!("${{BITCOIN_DATA_DIR}}:{bitcoin_path}"));
                         } else {
                             bail!("bitcoin mount defined as map, but only string is supported");
                         }
@@ -329,7 +328,7 @@ fn convert_volumes<'a>(
                         if let StringOrMap::String(jwt_pubkey_mount) = value {
                             service
                                 .volumes
-                                .push(format!("jwt-public-key:{}:ro", jwt_pubkey_mount));
+                                .push(format!("jwt-public-key:{jwt_pubkey_mount}:ro"));
                         } else {
                             bail!("JWT pubkey mount must be a string");
                         }
@@ -385,10 +384,9 @@ fn get_hidden_services(
                 app_name_slug,
                 ip_addresses
                     .get(&format!(
-                        "APP_{}_{}_IP",
-                        app_name_uppercase, service_name_uppercase
+                        "APP_{app_name_uppercase}_{service_name_uppercase}_IP"
                     ))
-                    .unwrap_or(&format!("<app-{}-{}-ip>", app_name_slug, service_name_slug)),
+                    .unwrap_or(&format!("<app-{app_name_slug}-{service_name_slug}-ip>")),
                 main_port
             );
             service_list.push("app-".to_owned() + &app_name_slug);
@@ -399,10 +397,9 @@ fn get_hidden_services(
                 types::HiddenServices::PortMap(simple_map) => {
                     if service_name != main_container {
                         let hidden_service_string = format!(
-                            "HiddenServiceDir /var/lib/tor/app-{}-{}\n",
-                            app_name_slug, service_name_slug
+                            "HiddenServiceDir /var/lib/tor/app-{app_name_slug}-{service_name_slug}\n"
                         );
-                        service_list.push(format!("app-{}-{}", app_name_slug, service_name_slug));
+                        service_list.push(format!("app-{app_name_slug}-{service_name_slug}"));
                         result += hidden_service_string.as_str();
                     }
                     for port in simple_map {
@@ -411,12 +408,10 @@ fn get_hidden_services(
                             port.0,
                             ip_addresses
                                 .get(&format!(
-                                    "APP_{}_{}_IP",
-                                    app_name_uppercase, service_name_uppercase
+                                    "APP_{app_name_uppercase}_{service_name_uppercase}_IP"
                                 ))
                                 .unwrap_or(&format!(
-                                    "<app-{}-{}-ip>",
-                                    app_name_slug, service_name_slug
+                                    "<app-{app_name_slug}-{service_name_slug}-ip>"
                                 )),
                             port.1
                         );
@@ -442,12 +437,10 @@ fn get_hidden_services(
                                 port.0,
                                 ip_addresses
                                     .get(&format!(
-                                        "APP_{}_{}_IP",
-                                        app_name_uppercase, service_name_uppercase
+                                        "APP_{app_name_uppercase}_{service_name_uppercase}_IP"
                                     ))
                                     .unwrap_or(&format!(
-                                        "<app-{}-{}-ip>",
-                                        app_name_slug, service_name_slug
+                                        "<app-{app_name_slug}-{service_name_slug}-ip>"
                                     )),
                                 port.1
                             );
@@ -486,10 +479,9 @@ fn get_i2p_tunnels(
                 service_name_slug,
                 ip_addresses
                     .get(&format!(
-                        "APP_{}_{}_IP",
-                        app_name_uppercase, service_name_uppercase
+                        "APP_{app_name_uppercase}_{service_name_uppercase}_IP"
                     ))
-                    .unwrap_or(&format!("<app-{}-{}-ip>", app_name_slug, service_name_slug)),
+                    .unwrap_or(&format!("<app-{app_name_slug}-{service_name_slug}-ip>")),
                 main_port,
                 app_name_slug,
                 service_name_slug
@@ -629,7 +621,7 @@ pub fn convert_config(
     let (new_tor_entries, hidden_services) = get_hidden_services(
         app_name,
         &app.services,
-        &main_service,
+        main_service,
         main_port,
         &ips,
     );

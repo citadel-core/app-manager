@@ -100,8 +100,8 @@ fn replace_env_vars(mut string: String, env_vars: &HashMap<String, String>) -> S
     for env_var in env_vars_in_str {
         if let Some(env_var_value) = env_vars.get(env_var) {
             string = string
-                .replace(&format!("${}", env_var), env_var_value)
-                .replace(&format!("${{{}}}", env_var), env_var_value);
+                .replace(&format!("${env_var}"), env_var_value)
+                .replace(&format!("${{{env_var}}}"), env_var_value);
         }
     }
     string

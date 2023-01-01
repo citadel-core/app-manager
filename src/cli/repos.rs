@@ -211,7 +211,7 @@ pub fn download_apps(citadel_root: &str) -> Result<()> {
 
     // Save stores to apps/stores.yml
     let stores_yml = citadel_root.join("apps").join("stores.yml");
-    let mut file = File::create(&stores_yml)?;
+    let mut file = File::create(stores_yml)?;
     serde_yaml::to_writer(&mut file, &stores)?;
 
     Ok(())
@@ -297,12 +297,12 @@ pub fn list_updates(citadel_root: &str) -> Result<()> {
                         let app_yml = app_dir.join("app.yml");
                         let app_yml = std::fs::File::open(app_yml);
                         let Ok(app_yml) = app_yml else {
-                            eprintln!("No app.yml found for app {}", app_id);
+                            eprintln!("No app.yml found for app {app_id}");
                             continue;
                         };
                         let app_config = load_config_as_v4(app_yml, &Some(&services));
                         let Ok(app_config) = app_config else {
-                            eprintln!("Failed to load app.yml for app {}", app_id);
+                            eprintln!("Failed to load app.yml for app {app_id}");
                             continue;
                         };
                         updatable_apps.push(AppUpdateInfo {
@@ -325,7 +325,7 @@ pub fn list_updates(citadel_root: &str) -> Result<()> {
     }
 
     let updates_yml = citadel_root.join("apps").join("updates.yml");
-    let mut file = File::create(&updates_yml)?;
+    let mut file = File::create(updates_yml)?;
     serde_yaml::to_writer(&mut file, &updatable_apps)?;
 
     Ok(())
@@ -384,7 +384,7 @@ pub fn download_app(citadel_root: &str, app: &str) -> Result<()> {
 
             fs_extra::dir::copy(
                 &app_dir,
-                &citadel_root.join("apps"),
+                citadel_root.join("apps"),
                 &fs_extra::dir::CopyOptions {
                     overwrite: true,
                     ..Default::default()
@@ -551,7 +551,7 @@ pub fn download_new_apps(citadel_root: &str) -> Result<()> {
 
     // Save stores to apps/stores.yml
     let stores_yml = citadel_root.join("apps").join("stores.yml");
-    let mut file = File::create(&stores_yml)?;
+    let mut file = File::create(stores_yml)?;
     serde_yaml::to_writer(&mut file, &stores)?;
 
     Ok(())

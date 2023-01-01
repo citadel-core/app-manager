@@ -18,10 +18,10 @@ pub fn derive_entropy(seed: &str, identifier: &str) -> String {
     hex::encode(result)
 }
 
-pub fn validate_cmd<'a>(
+pub fn validate_cmd(
     app_name: &str,
     command: &Command,
-    permissions: &[&'a String],
+    permissions: &[&String],
 ) -> Result<()> {
     match command {
         Command::SimpleCommand(simple_command) => {

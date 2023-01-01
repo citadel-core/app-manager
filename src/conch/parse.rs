@@ -144,35 +144,33 @@ impl<T: fmt::Display> fmt::Display for ParseError<T> {
         match *self {
             ParseError::BadFd(ref start, ref end) => write!(
                 fmt,
-                "file descriptor found between lines {} - {} cannot possibly be a valid",
-                start, end
+                "file descriptor found between lines {start} - {end} cannot possibly be a valid"
             ),
             ParseError::BadIdent(ref id, pos) => {
-                write!(fmt, "not a valid identifier {}: {}", pos, id)
+                write!(fmt, "not a valid identifier {pos}: {id}")
             }
             ParseError::BadSubst(ref t, pos) => {
-                write!(fmt, "bad substitution {}: invalid token: {}", pos, t)
+                write!(fmt, "bad substitution {pos}: invalid token: {t}")
             }
             ParseError::Unmatched(ref t, pos) => {
-                write!(fmt, "unmatched `{}` starting on line {}", t, pos)
+                write!(fmt, "unmatched `{t}` starting on line {pos}")
             }
 
             ParseError::IncompleteCmd(c, start, kw, kw_pos) => write!(
                 fmt,
-                "did not find `{}` keyword on line {}, in `{}` command which starts on line {}",
-                kw, kw_pos, c, start
+                "did not find `{kw}` keyword on line {kw_pos}, in `{c}` command which starts on line {start}"
             ),
 
             // When printing unexpected newlines, print \n instead to avoid confusingly formatted messages
             ParseError::Unexpected(Newline, pos) => {
-                write!(fmt, "found unexpected token on line {}: \\n", pos)
+                write!(fmt, "found unexpected token on line {pos}: \\n")
             }
             ParseError::Unexpected(ref t, pos) => {
-                write!(fmt, "found unexpected token on line {}: {}", pos, t)
+                write!(fmt, "found unexpected token on line {pos}: {t}")
             }
 
             ParseError::UnexpectedEOF => fmt.write_str("unexpected end of input"),
-            ParseError::Custom(ref e) => write!(fmt, "{}", e),
+            ParseError::Custom(ref e) => write!(fmt, "{e}"),
         }
     }
 }
@@ -986,7 +984,7 @@ impl<I: Iterator<Item = Token>, B: Builder> Parser<I, B> {
             let mut line = Vec::new();
             'line: loop {
                 if strip_tabs {
-                    let skip_next = if let Some(&Whitespace(ref w)) = self.iter.peek() {
+                    let skip_next = if let Some(Whitespace(w)) = self.iter.peek() {
                         let stripped = w.trim_start_matches('\t');
                         let num_tabs = w.len() - stripped.len();
                         line_start_pos.advance_tabs(num_tabs);
@@ -2816,7 +2814,7 @@ impl<I: Iterator<Item = Token>, B: Builder> Parser<I, B> {
             }
         });
 
-        let num = if let Some(&Literal(ref s)) = self.iter.peek() {
+        let num = if let Some(Literal(s)) = self.iter.peek() {
             if s.starts_with("0x") || s.starts_with("0X") {
                 // from_str_radix does not like it when 0x is present
                 // in the string to parse, thus we should strip it off.

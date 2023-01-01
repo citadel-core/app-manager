@@ -95,7 +95,7 @@ pub fn convert(dir: &Path) -> Result<()> {
         let parser = DefaultParser::new(lexer);
         for t in parser {
             if let Err(e) = t {
-                eprintln!("Error parsing exports.sh: {}", e);
+                eprintln!("Error parsing exports.sh: {e}");
                 break;
             }
             let t = t.unwrap();
@@ -126,7 +126,7 @@ pub fn convert(dir: &Path) -> Result<()> {
                                                 val,
                                             ) => {
                                                 if val.is_none() {
-                                                    eprintln!("Error parsing exports.sh: env var {} has no value", name);
+                                                    eprintln!("Error parsing exports.sh: env var {name} has no value");
                                                     continue;
                                                 }
                                                 match val.unwrap().0 {
@@ -218,7 +218,7 @@ pub fn convert(dir: &Path) -> Result<()> {
                                                                             } else if is_env_var_decl && declares_env_var.is_some() && env_var_value.is_none() {
                                                                                 env_var_value = Some(lit);
                                                                             } else {
-                                                                                println!("Unexpected literal: {}", lit);
+                                                                                println!("Unexpected literal: {lit}");
                                                                                 bail!("Not implemented yet");
                                                                             }
                                                                         },
@@ -273,10 +273,10 @@ pub fn convert(dir: &Path) -> Result<()> {
                                                                                                     key = key.replace('_', "");
                                                                                                 }
 
-                                                                                                real_value += format!("${{{}}}", key).as_str();
+                                                                                                real_value += format!("${{{key}}}").as_str();
                                                                                             } else {
-                                                                                                println!("Unknown variable: {}", var);
-                                                                                                println!("{:#?}", env_vars);
+                                                                                                println!("Unknown variable: {var}");
+                                                                                                println!("{env_vars:#?}");
                                                                                                 bail!("Not implemented yet");
                                                                                             }
                                                                                         },
@@ -294,7 +294,7 @@ pub fn convert(dir: &Path) -> Result<()> {
                                                                         if is_env_var_decl && declares_env_var.is_some() && env_var_value.is_none() {
                                                                             env_var_value = Some(real_value);
                                                                         } else {
-                                                                            println!("Unexpected value: {}", real_value);
+                                                                            println!("Unexpected value: {real_value}");
                                                                             bail!("Not implemented yet");
                                                                         }
                                                                     } else if declares_env_var.is_some() && env_var_value.is_none() {
@@ -303,7 +303,7 @@ pub fn convert(dir: &Path) -> Result<()> {
                                                                                 if is_env_var_decl && declares_env_var.is_some() && env_var_value.is_none() {
                                                                                     env_var_value = Some(lit.to_owned());
                                                                                 } else {
-                                                                                    println!("Unexpected literal: {}", lit);
+                                                                                    println!("Unexpected literal: {lit}");
                                                                                     bail!("Not implemented yet");
                                                                                 }
                                                                             },
@@ -395,7 +395,7 @@ pub fn convert(dir: &Path) -> Result<()> {
                                                                                                                                                                             },
                                                                                                                                                                         }
                                                                                                                                                                     } else {
-                                                                                                                                                                        println!("Unknown env var: {}", var_name);
+                                                                                                                                                                        println!("Unknown env var: {var_name}");
                                                                                                                                                                         bail!("Not implemented yet");
                                                                                                                                                                     }
                                                                                                                                                                 },
@@ -438,7 +438,7 @@ pub fn convert(dir: &Path) -> Result<()> {
                                                                                                 },
                                                                                             }
                                                                                         } else {
-                                                                                            println!("Unexpected command substitution: {:#?}", cmd);
+                                                                                            println!("Unexpected command substitution: {cmd:#?}");
                                                                                             bail!("Not implemented yet");
                                                                                         }
                                                                                     },
@@ -462,7 +462,7 @@ pub fn convert(dir: &Path) -> Result<()> {
                                                                             crate::conch::ast::SimpleWord::Colon => bail!("Not implemented yet"),
                                                                         }
                                                                     } else {
-                                                                        println!("Unexpected double quoted word: {:?}", quoted);
+                                                                        println!("Unexpected double quoted word: {quoted:?}");
                                                                         bail!("Not implemented yet");
                                                                     }
                                                                 },
@@ -503,7 +503,7 @@ pub fn convert(dir: &Path) -> Result<()> {
                                 }
                             }
                             crate::conch::ast::PipeableCommand::Compound(compound) => {
-                                println!("Unexpected compound command: {:#?}", compound);
+                                println!("Unexpected compound command: {compound:#?}");
                                 bail!("Not implemented yet");
                             }
                             crate::conch::ast::PipeableCommand::FunctionDef(_, _) => {
@@ -545,7 +545,7 @@ pub fn convert(dir: &Path) -> Result<()> {
                     // A way that is actually used is leaving everything after the first - of the app name out of the app name and env var
                     let app_name_short = uppercase_id.split('-').next().unwrap();
                     let alt_service_name = env_var_name
-                        .trim_start_matches(format!("APP_{}_", app_name_short).as_str())
+                        .trim_start_matches(format!("APP_{app_name_short}_").as_str())
                         .trim_end_matches("_IP")
                         .to_lowercase()
                         .replace('_', "-");
@@ -566,13 +566,13 @@ pub fn convert(dir: &Path) -> Result<()> {
                             alt_service_name.to_uppercase().replace('-', "")
                         );
                     }
-                    env_vars.insert(env_var_name, format!("${{{}}}", key));
+                    env_vars.insert(env_var_name, format!("${{{key}}}"));
                 }
             }
         }
     }
 
-    println!("env_vars: {:#?}", env_vars);
+    println!("env_vars: {env_vars:#?}");
     let citadel_app_yml = convert_compose(compose_yml, metadata, &env_vars)?;
     let writer = std::fs::File::create(dir.join("app.yml"))?;
     serde_yaml::to_writer(writer, &citadel_app_yml)?;

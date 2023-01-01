@@ -32,10 +32,10 @@ pub const ALWAYS_ALLOWED_ENV_VARS: [&str; 12] = [
     "MANAGER_IP",
 ];
 
-pub fn is_allowed_by_permissions<'a>(
+pub fn is_allowed_by_permissions(
     app_id: &str,
     env_var: &str,
-    permissions: &[&'a String],
+    permissions: &[&String],
 ) -> bool {
     if ALWAYS_ALLOWED_ENV_VARS.contains(&env_var) {
         return true;

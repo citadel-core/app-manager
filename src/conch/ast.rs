@@ -613,12 +613,12 @@ impl<T: fmt::Display> fmt::Display for Parameter<T> {
             Dollar => fmt.write_str("$$"),
             Bang => fmt.write_str("$!"),
 
-            Var(ref p) => write!(fmt, "${{{}}}", p),
+            Var(ref p) => write!(fmt, "${{{p}}}"),
             Positional(p) => {
                 if p <= 9 {
-                    write!(fmt, "${}", p)
+                    write!(fmt, "${p}")
                 } else {
-                    write!(fmt, "${{{}}}", p)
+                    write!(fmt, "${{{p}}}")
                 }
             }
         }
@@ -657,14 +657,13 @@ mod tests {
 
             let parsed = match DefaultParser::new(Lexer::new(src.chars())).word() {
                 Ok(Some(w)) => w,
-                Ok(None) => panic!("The source \"{}\" generated from the command `{:#?}` failed to parse as anything", src, correct),
-                Err(e) => panic!("The source \"{}\" generated from the command `{:#?}` failed to parse: {}", src, correct, e),
+                Ok(None) => panic!("The source \"{src}\" generated from the command `{correct:#?}` failed to parse as anything"),
+                Err(e) => panic!("The source \"{src}\" generated from the command `{correct:#?}` failed to parse: {e}"),
             };
 
             if correct != parsed {
                 panic!(
-                    "The source \"{}\" generated from the command `{:#?}` was parsed as `{:#?}`",
-                    src, correct, parsed
+                    "The source \"{src}\" generated from the command `{correct:#?}` was parsed as `{parsed:#?}`"
                 );
             }
         }

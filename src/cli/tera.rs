@@ -37,7 +37,7 @@ fn tor_hash(input: &str, salt: [u8; 8]) -> String {
     let hash = hash.finalize();
     let mut hash_str = String::new();
     for byte in hash {
-        hash_str.push_str(&format!("{:02X}", byte));
+        hash_str.push_str(&format!("{byte:02X}"));
     }
     format!(
         "16:{}60{}",
@@ -162,10 +162,10 @@ fn convert_app_yml_internal(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn generate_tera<'a>(
+fn generate_tera(
     app_id: &str,
     app_version: &str,
-    permissions: &[&'a String],
+    permissions: &[&String],
     services: &[String],
     services_with_hs: &[&String],
     env_vars: &HashMap<String, String>,
@@ -184,18 +184,18 @@ fn generate_tera<'a>(
     if let Some(citadel_seed) = &citadel_seed {
         context.insert(
             "APP_SEED",
-            &derive_entropy(citadel_seed, format!("app-{}-seed", app_id).as_str()),
+            &derive_entropy(citadel_seed, format!("app-{app_id}-seed").as_str()),
         );
         for i in 1..6 {
             context.insert(
-                format!("APP_SEED_{}", i),
-                &derive_entropy(citadel_seed, format!("app-{}-seed{}", app_id, i).as_str()),
+                format!("APP_SEED_{i}"),
+                &derive_entropy(citadel_seed, format!("app-{app_id}-seed{i}").as_str()),
             );
         }
     } else {
         context.insert("APP_SEED", NO_SEED_FOUND_FALLBACK_MSG);
         for i in 1..6 {
-            context.insert(format!("APP_SEED_{}", i), NO_SEED_FOUND_FALLBACK_MSG);
+            context.insert(format!("APP_SEED_{i}"), NO_SEED_FOUND_FALLBACK_MSG);
         }
     }
     context.insert("APP_VERSION", app_version);
@@ -213,8 +213,8 @@ fn generate_tera<'a>(
                 None
             }
         });
-        let app_name = format!("app-{}", app_id);
-        let app_prefix = format!("app-{}-", app_id);
+        let app_name = format!("app-{app_id}");
+        let app_prefix = format!("app-{app_id}-");
         for dir in subdirs {
             let dir_name = dir.file_name().unwrap().to_str().unwrap();
             if dir_name != app_name && !dir_name.starts_with(&app_prefix) {
