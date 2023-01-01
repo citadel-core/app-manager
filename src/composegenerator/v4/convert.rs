@@ -776,6 +776,7 @@ mod test {
                 port: 3000,
                 internal_port: 3000,
                 supports_https: true,
+                hidden_services: vec!["app-example-app".to_string()],
                 ..Default::default()
             },
             new_tor_entries: "HiddenServiceDir /var/lib/tor/app-example-app\nHiddenServicePort 80 <app-example-app-main-ip>:3000\n".to_string(),
