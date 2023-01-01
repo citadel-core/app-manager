@@ -390,7 +390,7 @@ fn get_hidden_services(
                     app_name_slug,
                     ip_addresses
                         .get("CADDY_IP")
-                        .unwrap_or(&"caddy-ip>".to_string()),
+                        .unwrap_or(&"<caddy-ip>".to_string()),
                     primary_caddy_entry.public_port
                 );
                 result += hidden_service_string.as_str();
@@ -502,7 +502,7 @@ fn get_i2p_tunnels(
                     service_name_slug,
                     ip_addresses
                         .get("CADDY_IP")
-                        .unwrap_or(&"caddy-ip>".to_string()),
+                        .unwrap_or(&"<caddy-ip>".to_string()),
                     primary_caddy_entry.public_port,
                     app_name_slug,
                     service_name_slug
@@ -817,8 +817,8 @@ mod test {
                 hidden_services: vec!["app-example-app".to_string()],
                 ..Default::default()
             },
-            new_tor_entries: "HiddenServiceDir /var/lib/tor/app-example-app\nHiddenServicePort 80 <app-example-app-main-ip>:3000\n".to_string(),
-            new_i2p_entries: "[app-example-app-main]\nhost = <app-example-app-main-ip>\nport = 3000\nkeys = app-example-app-main.dat\n".to_string(),
+            new_tor_entries: "HiddenServiceDir /var/lib/tor/app-example-app\nHiddenServicePort 80 <caddy-ip>:3000\n".to_string(),
+            new_i2p_entries: "[app-example-app-main]\nhost = <caddy-ip>\nport = 3000\nkeys = app-example-app-main.dat\n".to_string(),
             caddy_entries: vec![CaddyEntry { public_port: 3000, internal_port: 3000, container_name: "main".to_string(), is_primary: true }],
         };
         assert_eq!(expected_result, result.unwrap());
