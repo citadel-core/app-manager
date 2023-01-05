@@ -421,14 +421,6 @@ pub fn convert_dir(citadel_root: &str) -> Result<()> {
             continue;
         }
         let app_yml = std::fs::File::open(app_yml_path).expect("Error opening app.yml!");
-        let mut ip_map = ip_map.clone();
-        ip_map.insert(
-            "CADDY_IP".to_string(),
-            env_vars
-                .get("CADDY_IP")
-                .expect("Caddy IP missing from .env")
-                .to_string(),
-        );
         let conversion_result = convert_config(
             app_id,
             app_yml,
