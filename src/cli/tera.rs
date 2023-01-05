@@ -221,7 +221,7 @@ fn generate_tera(
                 continue;
             }
             let hostname_file = dir.join("hostname");
-            let mut hostname = "notyetgenerated.onion".to_string();
+            let mut hostname = String::with_capacity(62);
             if hostname_file.exists() {
                 let mut hostname_file = std::fs::File::open(hostname_file)?;
                 hostname_file.read_to_string(&mut hostname)?;
