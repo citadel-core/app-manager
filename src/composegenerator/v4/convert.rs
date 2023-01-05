@@ -386,11 +386,8 @@ fn get_hidden_services(
                     "Caddy entry that is not primary was passed to get_hidden_servies"
                 );
                 let hidden_service_string = format!(
-                    "HiddenServiceDir /var/lib/tor/app-{}\nHiddenServicePort 80 {}:{}\n",
+                    "HiddenServiceDir /var/lib/tor/app-{}\nHiddenServicePort 80 host.docker.internal:{}\n",
                     app_name_slug,
-                    ip_addresses
-                        .get("CADDY_IP")
-                        .unwrap_or(&"<caddy-ip>".to_string()),
                     primary_caddy_entry.public_port
                 );
                 result += hidden_service_string.as_str();
@@ -497,12 +494,9 @@ fn get_i2p_tunnels(
                     "Caddy entry that is not primary was passed to get_hidden_servies"
                 );
                 let hidden_service_string = format!(
-                    "[app-{}-{}]\nhost = {}\nport = {}\nkeys = app-{}-{}.dat\n",
+                    "[app-{}-{}]\nhost = host.docker.internal\nport = {}\nkeys = app-{}-{}.dat\n",
                     app_name_slug,
                     service_name_slug,
-                    ip_addresses
-                        .get("CADDY_IP")
-                        .unwrap_or(&"<caddy-ip>".to_string()),
                     primary_caddy_entry.public_port,
                     app_name_slug,
                     service_name_slug
@@ -817,8 +811,8 @@ mod test {
                 hidden_services: vec!["app-example-app".to_string()],
                 ..Default::default()
             },
-            new_tor_entries: "HiddenServiceDir /var/lib/tor/app-example-app\nHiddenServicePort 80 <caddy-ip>:3000\n".to_string(),
-            new_i2p_entries: "[app-example-app-main]\nhost = <caddy-ip>\nport = 3000\nkeys = app-example-app-main.dat\n".to_string(),
+            new_tor_entries: "HiddenServiceDir /var/lib/tor/app-example-app\nHiddenServicePort 80 host.docker.internal:3000\n".to_string(),
+            new_i2p_entries: "[app-example-app-main]\nhost = host.docker.internal\nport = 3000\nkeys = app-example-app-main.dat\n".to_string(),
             caddy_entries: vec![CaddyEntry { public_port: 3000, internal_port: 3000, container_name: "main".to_string(), is_primary: true }],
         };
         assert_eq!(expected_result, result.unwrap());
