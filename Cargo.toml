@@ -49,7 +49,8 @@ name = "app-cli"
 required-features = ["cli"]
 
 [features]
-cli = ["dep:clap", "dep:tracing-subscriber", "dep:dotenv", "dep:tera", "dep:tempdir", "dep:git2", "dep:semver", "dep:fs_extra", "dep:libz-sys", "dep:rand", "dep:sha1"]
+cli = ["dep:clap", "dep:tracing-subscriber", "dep:dotenv", "dep:tera", "dep:tempdir", "dep:semver", "dep:fs_extra", "dep:libz-sys", "dep:rand", "dep:sha1"]
+git = ["dep:git2"]
 umbrel = ["dep:void"]
 dev-tools = ["umbrel", "schema", "docker", "dep:octocrab", "dep:semver", "dep:gitlab", "dep:url", "dep:tokio"]
 schema = ["dep:schemars"]

@@ -68,18 +68,22 @@ enum SubCommand {
         /// The app file to run this on
         app: String,
     },
+    #[cfg(feature = "git")]
     DownloadApps {
         /// The Citadel root directory
         citadel_root: String,
     },
+    #[cfg(feature = "git")]
     DownloadNew {
         /// The Citadel root directory
         citadel_root: String,
     },
+    #[cfg(feature = "git")]
     CheckUpdates {
         /// The Citadel root directory
         citadel_root: String,
     },
+    #[cfg(feature = "git")]
     Download {
         /// The app to download
         app: String,
@@ -249,15 +253,19 @@ fn main() {
                 }
             }
         }
+        #[cfg(feature = "git")]
         SubCommand::DownloadApps { citadel_root } => {
             cli::repos::download_apps(&citadel_root).expect("Failed to download apps");
         }
+        #[cfg(feature = "git")]
         SubCommand::DownloadNew { citadel_root } => {
             cli::repos::download_new_apps(&citadel_root).expect("Failed to download apps");
         }
+        #[cfg(feature = "git")]
         SubCommand::CheckUpdates { citadel_root } => {
             cli::repos::list_updates(&citadel_root).expect("Failed to check for updates");
         }
+        #[cfg(feature = "git")]
         SubCommand::Download { citadel_root, app } => {
             cli::repos::download_app(&citadel_root, &app).expect("Failed to download app");
         }

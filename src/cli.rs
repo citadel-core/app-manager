@@ -20,6 +20,7 @@ use crate::composegenerator::{
 use anyhow::Result;
 
 mod preprocessing;
+#[cfg(feature = "git")]
 pub mod repos;
 mod tera;
 #[cfg(feature = "umbrel")]
@@ -400,10 +401,6 @@ pub fn convert_dir(citadel_root: &str) -> Result<()> {
     let mut i2p_entries: Vec<String> = Vec::new();
 
     let mut caddy_entries = HashMap::new();
-    #[allow(deprecated)]
-    let env_vars: HashMap<String, String> = HashMap::from_iter(
-        dotenv::from_filename_iter(citadel_root.join(".env"))?.filter_map(|var| var.ok()),
-    );
 
     for app in apps {
         let app = app.expect("Error reading app directory!");
