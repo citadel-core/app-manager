@@ -50,18 +50,10 @@ static RESERVED_PORTS: [u16; 4] = [
 ];
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct HttpsOptions {
-    #[serde(default = "bool::default")]
-    agreed_lets_encrypt_tos: bool,
-    // user_email: String,
-    app_domains: HashMap<String, String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 struct UserJson {
     #[serde(rename = "installedApps")]
     installed_apps: Vec<String>,
-    https: Option<HttpsOptions>,
+    https: Option<serde_json::Value>,
 }
 
 pub fn convert_dir(citadel_root: &str) -> Result<()> {
