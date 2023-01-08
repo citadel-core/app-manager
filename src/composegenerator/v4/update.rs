@@ -2,8 +2,14 @@ use bollard::{image::CreateImageOptions, Docker};
 
 use super::types::Container;
 use anyhow::{bail, Result};
+use cached::proc_macro::cached;
 use futures_util::stream::TryStreamExt;
 
+#[cached(
+    key = "String",
+    convert = r##"{ format!("{}", container) }"##,
+    result = true
+)]
 pub async fn get_hash(container: &str, docker: &Docker) -> Result<String> {
     tracing::info!("Pulling {}...", container);
     docker

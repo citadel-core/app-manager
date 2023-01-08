@@ -1,19 +1,21 @@
 use citadel_apps::cli;
 #[cfg(all(feature = "umbrel", feature = "dev-tools"))]
 use citadel_apps::composegenerator::umbrel::types::Metadata as UmbrelMetadata;
-use citadel_apps::composegenerator::v4::types::AppYml;
-use citadel_apps::composegenerator::{convert_config, load_config};
 #[cfg(feature = "dev-tools")]
 use citadel_apps::{
     composegenerator::{
         compose::types::ComposeSpecification,
+        convert_config, load_config,
         types::ResultYml,
         v3::{convert::v3_to_v4, types::SchemaItemContainers},
+        v4::types::AppYml,
     },
     updates::update_app,
 };
 use clap::{Parser, Subcommand};
+#[cfg(any(feature = "umbrel", feature = "dev-tools"))]
 use std::path::Path;
+#[cfg(feature = "dev-tools")]
 use std::process::exit;
 
 #[derive(Subcommand, Debug)]
@@ -36,9 +38,7 @@ enum SubCommand {
     #[cfg(feature = "umbrel")]
     UmbrelToCitadel {
         /// The app directory to run this on
-        app: String,
-        /// The output file to save the result to
-        output: String,
+        app_dir: String,
     },
     /// Validate a Citadel app.yml file and check if it could be parsed & converted
     #[cfg(feature = "dev-tools")]
@@ -68,18 +68,22 @@ enum SubCommand {
         /// The app file to run this on
         app: String,
     },
+    #[cfg(feature = "git")]
     DownloadApps {
         /// The Citadel root directory
         citadel_root: String,
     },
+    #[cfg(feature = "git")]
     DownloadNew {
         /// The Citadel root directory
         citadel_root: String,
     },
+    #[cfg(feature = "git")]
     CheckUpdates {
         /// The Citadel root directory
         citadel_root: String,
     },
+    #[cfg(feature = "git")]
     Download {
         /// The app to download
         app: String,
@@ -122,7 +126,7 @@ fn main() {
     let args: Cli = Cli::parse();
     match args.command {
         SubCommand::Convert { citadel_root } => {
-            cli::convert_dir(&citadel_root);
+            cli::convert_dir(&citadel_root).expect("Failed to convert");
         }
         #[cfg(feature = "dev-tools")]
         SubCommand::Schema { version } => match version.as_str() {
@@ -153,22 +157,9 @@ fn main() {
             }
         },
         #[cfg(feature = "umbrel")]
-        SubCommand::UmbrelToCitadel { app, output } => {
-            let app_dir = Path::new(&app);
-            let compose_yml = std::fs::File::open(app_dir.join("docker-compose.yml"))
-                .expect("Error opening docker-compose.yml!");
-            let app_yml = std::fs::File::open(app_dir.join("umbrel-app.yml"))
-                .expect("Error opening umbrel-app.yml!");
-            let app_yml_parsed: citadel_apps::composegenerator::umbrel::types::Metadata =
-                serde_yaml::from_reader(app_yml).expect("Error parsing umbrel-app.yml!");
-            let compose_yml_parsed: citadel_apps::composegenerator::compose::types::ComposeSpecification
-             = serde_yaml::from_reader(compose_yml).expect("Error parsing docker-compose.yml!");
-            let result = citadel_apps::composegenerator::umbrel::convert::convert_compose(
-                compose_yml_parsed,
-                app_yml_parsed,
-            );
-            let writer = std::fs::File::create(output).expect("Error creating output file");
-            serde_yaml::to_writer(writer, &result).expect("Error saving file!");
+        SubCommand::UmbrelToCitadel { app_dir } => {
+            let app_dir = Path::new(&app_dir);
+            cli::umbrel::convert(app_dir).expect("Conversion failed!");
         }
         #[cfg(feature = "dev-tools")]
         SubCommand::Validate { app, app_name } => {
@@ -200,38 +191,46 @@ fn main() {
                     } else {
                         let subdirs = std::fs::read_dir(path).expect("Failed to read directory");
                         for subdir in subdirs {
-                            let subdir = subdir.unwrap_or_else(|_| {
-                                panic!("Failed to read subdir/file in {}", path.display())
-                            });
-                            let file_type = subdir.file_type().unwrap_or_else(|_| {
-                                panic!(
-                                    "Failed to get filetype of {}/{}",
-                                    path.display(),
-                                    subdir.file_name().to_string_lossy()
-                                )
-                            });
-                            if file_type.is_file() {
+                            let subdir = subdir.expect("Failed to get subdir").path();
+                            if !subdir.is_dir() {
                                 continue;
-                            } else if file_type.is_symlink() {
-                                eprintln!(
-                                    "Symlinks like {}/{} are not supported yet!",
-                                    path.display(),
-                                    subdir.file_name().to_string_lossy()
-                                );
-                            } else if file_type.is_dir() {
-                                let sub_app_yml = subdir.path().join("app.yml");
-                                if sub_app_yml.is_file() {
-                                    update_app_yml(&sub_app_yml, include_prerelease).await;
-                                } else {
+                            }
+                            let subdirs =
+                                std::fs::read_dir(subdir).expect("Failed to read directory");
+                            for subdir in subdirs {
+                                let subdir = subdir.unwrap_or_else(|_| {
+                                    panic!("Failed to read subdir/file in {}", path.display())
+                                });
+                                let file_type = subdir.file_type().unwrap_or_else(|_| {
+                                    panic!(
+                                        "Failed to get filetype of {}/{}",
+                                        path.display(),
+                                        subdir.file_name().to_string_lossy()
+                                    )
+                                });
+                                if file_type.is_file() {
+                                    continue;
+                                } else if file_type.is_symlink() {
                                     eprintln!(
-                                        "{}/{}/app.yml does not exist or is not a file!",
+                                        "Symlinks like {}/{} are not supported yet!",
                                         path.display(),
                                         subdir.file_name().to_string_lossy()
                                     );
-                                    continue;
+                                } else if file_type.is_dir() {
+                                    let sub_app_yml = subdir.path().join("app.yml");
+                                    if sub_app_yml.is_file() {
+                                        update_app_yml(&sub_app_yml, include_prerelease).await;
+                                    } else {
+                                        eprintln!(
+                                            "{}/{}/app.yml does not exist or is not a file!",
+                                            path.display(),
+                                            subdir.file_name().to_string_lossy()
+                                        );
+                                        continue;
+                                    }
+                                } else {
+                                    unreachable!();
                                 }
-                            } else {
-                                unreachable!();
                             }
                         }
                     }
@@ -254,15 +253,19 @@ fn main() {
                 }
             }
         }
+        #[cfg(feature = "git")]
         SubCommand::DownloadApps { citadel_root } => {
             cli::repos::download_apps(&citadel_root).expect("Failed to download apps");
         }
+        #[cfg(feature = "git")]
         SubCommand::DownloadNew { citadel_root } => {
             cli::repos::download_new_apps(&citadel_root).expect("Failed to download apps");
         }
+        #[cfg(feature = "git")]
         SubCommand::CheckUpdates { citadel_root } => {
             cli::repos::list_updates(&citadel_root).expect("Failed to check for updates");
         }
+        #[cfg(feature = "git")]
         SubCommand::Download { citadel_root, app } => {
             cli::repos::download_app(&citadel_root, &app).expect("Failed to download app");
         }

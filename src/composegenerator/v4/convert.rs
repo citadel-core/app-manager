@@ -1,6 +1,6 @@
 use super::{
     permissions, types,
-    types::PortMapElement,
+    types::{PortMapElement, StringOrMap},
     utils::{get_host_port, get_main_container, validate_cmd},
 };
 use crate::{
@@ -8,17 +8,22 @@ use crate::{
     composegenerator::{
         compose::types::StringOrIntOrBool,
         output::types::{ComposeSpecification, NetworkEntry, Service},
-        types::Permissions,
+        types::{CaddyEntry, Permissions},
     },
 };
 use crate::{
     composegenerator::types::OutputMetadata,
     utils::{find_env_vars, flatten},
 };
+use lazy_static::lazy_static;
 use std::collections::{BTreeMap, HashMap};
 
 use crate::composegenerator::types::ResultYml;
 use anyhow::{bail, Result};
+
+lazy_static! {
+    static ref NET_PERMISSION: String = "network".to_string();
+}
 
 fn get_main_port(
     containers: &HashMap<String, types::Container>,
@@ -87,8 +92,9 @@ fn configure_ports(
     main_container: &str,
     output: &mut ComposeSpecification,
     port_map: &Option<HashMap<String, Vec<PortMapElement>>>,
-) -> Result<()> {
+) -> Result<Vec<CaddyEntry>> {
     let services = output.services.as_mut().unwrap();
+    let mut caddy_entries = Vec::new();
     for (service_name, service) in services {
         let original_definition = containers.get(service_name).unwrap();
         if service_name != main_container && original_definition.port.is_some() {
@@ -106,21 +112,29 @@ fn configure_ports(
                 dynamic: false,
             };
             if let Some(real_port_map) = port_map {
-                if real_port_map.get(service_name).is_none() {
+                let Some(ports) = real_port_map.get(service_name) else {
                     bail!(
                         "Container {} not found or invalid in port map",
                         service_name
                     );
-                }
-                let ports = real_port_map.get(service_name).unwrap();
+                };
                 public_port = get_host_port(ports, internal_port);
             } else {
                 public_port = Some(&fake_port);
             }
             if let Some(port_map_elem) = public_port {
-                service
-                    .ports
-                    .push(format!("{}:{}", port_map_elem.public_port, internal_port));
+                if original_definition.direct_tcp {
+                    service
+                        .ports
+                        .push(format!("{}:{}", port_map_elem.public_port, internal_port));
+                } else {
+                    caddy_entries.push(CaddyEntry {
+                        internal_port,
+                        public_port: port_map_elem.public_port,
+                        container_name: service_name.to_owned(),
+                        is_primary: true,
+                    });
+                }
             } else {
                 bail!("Main container port not found in port map");
             }
@@ -149,10 +163,20 @@ fn configure_ports(
                     service.ports.push(format!("{}:{}/udp", port.0, port.1));
                 }
             }
+            if let Some(http_ports) = &required_ports.http {
+                for (public_port, internal_port) in http_ports {
+                    caddy_entries.push(CaddyEntry {
+                        internal_port: *internal_port,
+                        public_port: *public_port,
+                        container_name: service_name.to_owned(),
+                        is_primary: false,
+                    })
+                }
+            }
         }
     }
 
-    Ok(())
+    Ok(caddy_entries)
 }
 
 fn define_ip_addresses(
@@ -184,7 +208,7 @@ fn define_ip_addresses(
 
 fn validate_service(
     app_name: &str,
-    permissions: &mut Vec<String>,
+    permissions: &mut Vec<&String>,
     service: &types::Container,
     replace_env_vars: &HashMap<String, String>,
     result: &mut Service,
@@ -216,7 +240,7 @@ fn validate_service(
                             .filter(|(key, _)| env_vars.contains(&key.as_str()));
                         for (env_var, replacement) in to_replace {
                             let syntax_1 = "$".to_string() + env_var;
-                            let syntax_2 = format!("${{{}}}", env_var);
+                            let syntax_2 = format!("${{{env_var}}}");
                             val = val.replace(&syntax_1, replacement);
                             val = val.replace(&syntax_2, replacement);
                         }
@@ -231,10 +255,10 @@ fn validate_service(
         }
     }
     if service.network_mode.is_some() {
-        if !permissions.contains(&"network".to_string()) {
+        if !permissions.contains(&&NET_PERMISSION.to_string()) {
             // To preserve compatibility, this is only a warning, but we add the permission to the output
             tracing::warn!("App defines network-mode, but does not request the network permission");
-            permissions.push("network".to_string());
+            permissions.push(&NET_PERMISSION);
         }
         result.network_mode = service.network_mode.to_owned();
     }
@@ -243,7 +267,7 @@ fn validate_service(
         for cap in caps {
             match cap.to_lowercase().as_str() {
                 "cap-net-raw" | "cap-net-admin" => {
-                    if !permissions.contains(&"network".to_string()) {
+                    if !permissions.contains(&&"network".to_string()) {
                         bail!("App defines a network capability, but does not request the network permission");
                     }
                     cap_add.push(cap.to_owned());
@@ -258,57 +282,77 @@ fn validate_service(
 
 fn convert_volumes(
     containers: &HashMap<String, types::Container>,
-    permissions: &[String],
+    permissions: &[&String],
     output: &mut ComposeSpecification,
 ) -> Result<()> {
     let services = output.services.as_mut().unwrap();
     for (service_name, service) in services {
         let original_definition = containers.get(service_name).unwrap();
         if let Some(mounts) = &original_definition.mounts {
-            if let Some(data_mounts) = &mounts.data {
-                for (host_path, container_path) in data_mounts {
-                    if host_path.contains("..") {
-                        bail!("A data dir to mount is not allowed to contain '..'");
+            for (key, value) in mounts {
+                match key.as_str() {
+                    // These can be treated equally here
+                    // shared_data may only have one entry, but that's checked earlier
+                    "shared_data" | "data" => {
+                        if let StringOrMap::Map(data_mounts) = value {
+                            for (host_path, container_path) in data_mounts {
+                                if host_path.contains("..") {
+                                    bail!("A data dir to mount is not allowed to contain '..'");
+                                }
+                                let mount_host_dir: String = if !host_path.starts_with('/') {
+                                    "/".to_owned() + host_path
+                                } else {
+                                    host_path.clone()
+                                };
+                                service.volumes.push(format!(
+                                    "${{APP_DATA_DIR}}{mount_host_dir}:{container_path}"
+                                ));
+                            }
+                        } else {
+                            bail!("Data mounts must be a map");
+                        }
                     }
-                    let mount_host_dir: String = if !host_path.starts_with('/') {
-                        "/".to_owned() + host_path
-                    } else {
-                        host_path.clone()
-                    };
-                    service.volumes.push(format!(
-                        "${{APP_DATA_DIR}}{}:{}",
-                        mount_host_dir, container_path
-                    ));
+                    "bitcoin" => {
+                        if !permissions.contains(&&"bitcoind".to_string()) {
+                            bail!("bitcoin mount defined by container without Bitcoin permissions",);
+                        }
+                        if let StringOrMap::String(bitcoin_path) = value {
+                            service
+                                .volumes
+                                .push(format!("${{BITCOIN_DATA_DIR}}:{bitcoin_path}"));
+                        } else {
+                            bail!("bitcoin mount defined as map, but only string is supported");
+                        }
+                    }
+                    "jwt-public-key" => {
+                        if let StringOrMap::String(jwt_pubkey_mount) = value {
+                            service
+                                .volumes
+                                .push(format!("jwt-public-key:{jwt_pubkey_mount}:ro"));
+                        } else {
+                            bail!("JWT pubkey mount must be a string");
+                        }
+                    }
+                    _ => {
+                        if permissions.contains(&key) {
+                            if let StringOrMap::String(string) = value {
+                                service.volumes.push(format!(
+                                    "${{CITADEL_APP_DATA}}/{}/${{APP_{}_SHARED_SUBDIR}}:{}",
+                                    key,
+                                    key.to_uppercase().replace('-', "_"),
+                                    string
+                                ));
+                            } else {
+                                bail!("Mounts must be a map");
+                            }
+                        } else {
+                            bail!(
+                                "App defines a mount for {}, but that mount is either not specified as a permission or not yet supported by this version of the app CLI",
+                                key
+                            );
+                        }
+                    }
                 }
-            }
-
-            if let Some(bitcoin_mount) = &mounts.bitcoin {
-                if !permissions.contains(&"bitcoind".to_string()) {
-                    bail!("bitcoin mount defined by container without Bitcoin permissions",);
-                }
-                service
-                    .volumes
-                    .push(format!("${{BITCOIN_DATA_DIR}}:{}", bitcoin_mount));
-            }
-
-            if let Some(lnd_mount) = &mounts.lnd {
-                if !permissions.contains(&"lnd".to_string()) {
-                    bail!("lnd mount defined by container without LND permissions");
-                }
-                service
-                    .volumes
-                    .push(format!("${{LND_DATA_DIR}}:{}", lnd_mount));
-            }
-
-            if let Some(c_lightning_mount) = &mounts.c_lightning {
-                if !permissions.contains(&"c-lightning".to_string()) {
-                    bail!(
-                        "c-lightning mount defined by container without Core Lightning permissions",
-                    );
-                }
-                service
-                    .volumes
-                    .push(format!("${{C_LIGHTNING_DATA_DIR}}:{}", c_lightning_mount));
             }
         }
     }
@@ -318,10 +362,11 @@ fn convert_volumes(
 
 fn get_hidden_services(
     app_name: &str,
-    containers: HashMap<String, types::Container>,
+    containers: &HashMap<String, types::Container>,
     main_container: &str,
     main_port: u16,
     ip_addresses: &HashMap<String, String>,
+    primary_caddy_entry: &Option<&CaddyEntry>,
 ) -> (String, Vec<String>) {
     let mut result = String::new();
     let mut service_list = Vec::new();
@@ -335,29 +380,40 @@ fn get_hidden_services(
         let app_name_slug = app_name.to_lowercase().replace('_', "-");
         let service_name_slug = service_name.to_lowercase().replace('_', "-");
         if service_name == main_container {
-            let hidden_service_string = format!(
-                "HiddenServiceDir /var/lib/tor/app-{}\nHiddenServicePort 80 {}:{}\n",
-                app_name_slug,
-                ip_addresses
-                    .get(&format!(
-                        "APP_{}_{}_IP",
-                        app_name_uppercase, service_name_uppercase
-                    ))
-                    .unwrap_or(&format!("<app-{}-{}-ip>", app_name_slug, service_name_slug)),
-                main_port
-            );
+            if let Some(primary_caddy_entry) = primary_caddy_entry {
+                debug_assert!(
+                    primary_caddy_entry.is_primary,
+                    "Caddy entry that is not primary was passed to get_hidden_servies"
+                );
+                let hidden_service_string = format!(
+                    "HiddenServiceDir /var/lib/tor/app-{}\nHiddenServicePort 80 host.docker.internal:{}\n",
+                    app_name_slug,
+                    primary_caddy_entry.public_port
+                );
+                result += hidden_service_string.as_str();
+            } else {
+                let hidden_service_string = format!(
+                    "HiddenServiceDir /var/lib/tor/app-{}\nHiddenServicePort 80 {}:{}\n",
+                    app_name_slug,
+                    ip_addresses
+                        .get(&format!(
+                            "APP_{app_name_uppercase}_{service_name_uppercase}_IP"
+                        ))
+                        .unwrap_or(&format!("<app-{app_name_slug}-{service_name_slug}-ip>")),
+                    main_port
+                );
+                result += hidden_service_string.as_str();
+            }
             service_list.push("app-".to_owned() + &app_name_slug);
-            result += hidden_service_string.as_str();
         }
         if let Some(hidden_services) = &original_definition.hidden_services {
             match hidden_services {
                 types::HiddenServices::PortMap(simple_map) => {
                     if service_name != main_container {
                         let hidden_service_string = format!(
-                            "HiddenServiceDir /var/lib/tor/app-{}-{}\n",
-                            app_name_slug, service_name_slug
+                            "HiddenServiceDir /var/lib/tor/app-{app_name_slug}-{service_name_slug}\n"
                         );
-                        service_list.push(format!("app-{}-{}", app_name_slug, service_name_slug));
+                        service_list.push(format!("app-{app_name_slug}-{service_name_slug}"));
                         result += hidden_service_string.as_str();
                     }
                     for port in simple_map {
@@ -366,12 +422,10 @@ fn get_hidden_services(
                             port.0,
                             ip_addresses
                                 .get(&format!(
-                                    "APP_{}_{}_IP",
-                                    app_name_uppercase, service_name_uppercase
+                                    "APP_{app_name_uppercase}_{service_name_uppercase}_IP"
                                 ))
                                 .unwrap_or(&format!(
-                                    "<app-{}-{}-ip>",
-                                    app_name_slug, service_name_slug
+                                    "<app-{app_name_slug}-{service_name_slug}-ip>"
                                 )),
                             port.1
                         );
@@ -397,12 +451,10 @@ fn get_hidden_services(
                                 port.0,
                                 ip_addresses
                                     .get(&format!(
-                                        "APP_{}_{}_IP",
-                                        app_name_uppercase, service_name_uppercase
+                                        "APP_{app_name_uppercase}_{service_name_uppercase}_IP"
                                     ))
                                     .unwrap_or(&format!(
-                                        "<app-{}-{}-ip>",
-                                        app_name_slug, service_name_slug
+                                        "<app-{app_name_slug}-{service_name_slug}-ip>"
                                     )),
                                 port.1
                             );
@@ -419,10 +471,11 @@ fn get_hidden_services(
 
 fn get_i2p_tunnels(
     app_name: &str,
-    containers: HashMap<String, types::Container>,
+    containers: &HashMap<String, types::Container>,
     main_container: &str,
     main_port: u16,
     ip_addresses: &HashMap<String, String>,
+    primary_caddy_entry: &Option<&CaddyEntry>,
 ) -> String {
     let mut result = String::new();
     for service_name in containers.keys() {
@@ -435,21 +488,36 @@ fn get_i2p_tunnels(
         let app_name_slug = app_name.to_lowercase().replace('_', "-");
         let service_name_slug = service_name.to_lowercase().replace('_', "-");
         if service_name == main_container {
-            let hidden_service_string = format!(
-                "[app-{}-{}]\nhost = {}\nport = {}\nkeys = app-{}-{}.dat\n",
-                app_name_slug,
-                service_name_slug,
-                ip_addresses
-                    .get(&format!(
-                        "APP_{}_{}_IP",
-                        app_name_uppercase, service_name_uppercase
-                    ))
-                    .unwrap_or(&format!("<app-{}-{}-ip>", app_name_slug, service_name_slug)),
-                main_port,
-                app_name_slug,
-                service_name_slug
-            );
-            result += hidden_service_string.as_str();
+            if let Some(primary_caddy_entry) = primary_caddy_entry {
+                debug_assert!(
+                    primary_caddy_entry.is_primary,
+                    "Caddy entry that is not primary was passed to get_hidden_servies"
+                );
+                let hidden_service_string = format!(
+                    "[app-{}-{}]\nhost = host.docker.internal\nport = {}\nkeys = app-{}-{}.dat\n",
+                    app_name_slug,
+                    service_name_slug,
+                    primary_caddy_entry.public_port,
+                    app_name_slug,
+                    service_name_slug
+                );
+                result += hidden_service_string.as_str();
+            } else {
+                let hidden_service_string = format!(
+                    "[app-{}-{}]\nhost = {}\nport = {}\nkeys = app-{}-{}.dat\n",
+                    app_name_slug,
+                    service_name_slug,
+                    ip_addresses
+                        .get(&format!(
+                            "APP_{app_name_uppercase}_{service_name_uppercase}_IP"
+                        ))
+                        .unwrap_or(&format!("<app-{app_name_slug}-{service_name_slug}-ip>")),
+                    main_port,
+                    app_name_slug,
+                    service_name_slug
+                );
+                result += hidden_service_string.as_str();
+            }
         }
         if original_definition.hidden_services.is_some() {
             tracing::info!("Multi-port hidden services are not yet supported for I2P on Citadel!");
@@ -489,9 +557,9 @@ pub fn convert_config(
         services: Some(BTreeMap::new()),
     };
     let spec_services = spec.services.get_or_insert(BTreeMap::new());
-    let mut permissions = flatten(app.metadata.permissions.clone());
+    let mut permissions = flatten(&app.metadata.permissions);
 
-    let main_service = get_main_container(&app)?;
+    let main_service = get_main_container(&app.services)?;
     let mut app_port_map: Option<HashMap<String, Vec<PortMapElement>>> = None;
     if let Some(port_map) = port_map {
         if let Some(app_port_map_entry) = port_map.get(app_name) {
@@ -510,7 +578,7 @@ pub fn convert_config(
             app_port_map = Some(entry);
         }
     }
-    let main_port = get_main_port(&app.services, &main_service, &app_port_map)?;
+    let main_port = get_main_port(&app.services, main_service, &app_port_map)?;
 
     // Required for dynamic ports
     let env_var = format!(
@@ -522,6 +590,11 @@ pub fn convert_config(
     let replace_env_vars = HashMap::<String, String>::from([
         (env_var, main_port.to_string()),
         ("ELECTRUM_IP".to_string(), "${APP_ELECTRUM_IP}".to_string()),
+        ("LND_IP".to_string(), "${APP_LND_SERVICE_IP}".to_string()),
+        (
+            "C_LIGHTNING_IP".to_string(),
+            "${APP_CORE_LIGHTNING_SERVICE_IP}".to_string(),
+        ),
         ("ELECTRUM_PORT".to_string(), "50001".to_string()),
     ]);
 
@@ -551,16 +624,16 @@ pub fn convert_config(
         )?;
     }
     // We can now finalize the process by parsing some of the remaining values
-    configure_ports(&app.services, &main_service, &mut spec, &app_port_map)?;
+    let caddy_entries = configure_ports(&app.services, main_service, &mut spec, &app_port_map)?;
 
-    define_ip_addresses(app_name, &app.services, &main_service, &mut spec)?;
+    define_ip_addresses(app_name, &app.services, main_service, &mut spec)?;
 
     convert_volumes(&app.services, &permissions, &mut spec)?;
 
     let mut main_port_host: Option<u16> = None;
     if let Some(converted_map) = app_port_map {
         main_port_host = Some(
-            get_host_port(converted_map.get(&main_service).unwrap(), main_port)
+            get_host_port(converted_map.get(main_service).unwrap(), main_port)
                 .unwrap()
                 .public_port,
         );
@@ -576,12 +649,14 @@ pub fn convert_config(
         ips = ip_addresses.clone();
     }
 
+    let primary_caddy_entry = caddy_entries.iter().find(|entry| entry.is_primary);
     let (new_tor_entries, hidden_services) = get_hidden_services(
         app_name,
-        app.services.clone(),
-        &main_service,
+        &app.services,
+        main_service,
         main_port,
         &ips,
+        &primary_caddy_entry,
     );
     let mut metadata = OutputMetadata {
         id: app_name.to_string(),
@@ -596,6 +671,7 @@ pub fn convert_config(
         support: app.metadata.support,
         gallery: app.metadata.gallery,
         path: app.metadata.path,
+        default_username: app.metadata.default_username,
         default_password: app.metadata.default_password,
         tor_only: app.metadata.tor_only,
         update_containers: app.metadata.update_containers,
@@ -606,6 +682,7 @@ pub fn convert_config(
         port: main_port_host.unwrap_or(main_port),
         internal_port: main_port,
         release_notes: app.metadata.release_notes,
+        supports_https: caddy_entries.iter().any(|entry| entry.is_primary),
         hidden_services,
     };
     if !missing_deps.is_empty() {
@@ -615,8 +692,16 @@ pub fn convert_config(
     let result = ResultYml {
         spec,
         new_tor_entries,
-        new_i2p_entries: get_i2p_tunnels(app_name, app.services, &main_service, main_port, &ips),
+        new_i2p_entries: get_i2p_tunnels(
+            app_name,
+            &app.services,
+            main_service,
+            main_port,
+            &ips,
+            &primary_caddy_entry,
+        ),
         metadata,
+        caddy_entries,
     };
 
     // And we're done
@@ -630,7 +715,7 @@ mod test {
         bmap,
         composegenerator::{
             output::types::{ComposeSpecification, NetworkEntry, Service},
-            types::{OutputMetadata, Permissions, ResultYml},
+            types::{CaddyEntry, OutputMetadata, Permissions, ResultYml},
             v4::types::{AppYml, Container, InputMetadata},
         },
         map,
@@ -647,7 +732,7 @@ mod test {
                 version: "1.0.0".to_string(),
                 category: "Example category".to_string(),
                 tagline: "The only example app for Citadel you will ever need".to_string(),
-                developers: map! {
+                developers: bmap! {
                     "Citadel team".to_string() => "runcitadel.space".to_string()
                 },
                 permissions: vec![Permissions::OneDependency("lnd".to_string())],
@@ -682,7 +767,7 @@ mod test {
                         image: Some("ghcr.io/runcitadel/example:main".to_string()),
                         user: Some("1000:1000".to_string()),
                         depends_on: Some(vec!["database".to_string()]),
-                        ports: vec!["3000:3000".to_string()],
+                        ports: vec![],
                         networks: Some(bmap! {
                             "default" => NetworkEntry {
                                 ipv4_address: Some("$APP_EXAMPLE_APP_MAIN_IP".to_string())
@@ -709,7 +794,7 @@ mod test {
                 version: "1.0.0".to_string(),
                 category: "Example category".to_string(),
                 tagline: "The only example app for Citadel you will ever need".to_string(),
-                developers: map! {
+                developers: bmap! {
                     "Citadel team".to_string() => "runcitadel.space".to_string()
                 },
                 permissions: vec![Permissions::OneDependency("lnd".to_string())],
@@ -722,11 +807,13 @@ mod test {
                 compatible: false,
                 port: 3000,
                 internal_port: 3000,
+                supports_https: true,
                 hidden_services: vec!["app-example-app".to_string()],
                 ..Default::default()
             },
-            new_tor_entries: "HiddenServiceDir /var/lib/tor/app-example-app\nHiddenServicePort 80 <app-example-app-main-ip>:3000\n".to_string(),
-            new_i2p_entries: "[app-example-app-main]\nhost = <app-example-app-main-ip>\nport = 3000\nkeys = app-example-app-main.dat\n".to_string(),
+            new_tor_entries: "HiddenServiceDir /var/lib/tor/app-example-app\nHiddenServicePort 80 host.docker.internal:3000\n".to_string(),
+            new_i2p_entries: "[app-example-app-main]\nhost = host.docker.internal\nport = 3000\nkeys = app-example-app-main.dat\n".to_string(),
+            caddy_entries: vec![CaddyEntry { public_port: 3000, internal_port: 3000, container_name: "main".to_string(), is_primary: true }],
         };
         assert_eq!(expected_result, result.unwrap());
     }

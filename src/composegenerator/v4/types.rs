@@ -18,6 +18,7 @@ pub enum HiddenServices {
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct PortsDefinition {
     pub tcp: Option<HashMap<u16, u16>>,
+    pub http: Option<HashMap<u16, u16>>,
     pub udp: Option<HashMap<u16, u16>>,
 }
 
@@ -32,17 +33,12 @@ pub enum PortPriority {
     Required,
 }
 
-#[derive(Serialize, Deserialize, Clone, Default, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub struct Mounts {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub bitcoin: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub lnd: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub c_lightning: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub data: Option<HashMap<String, String>>,
+#[serde(untagged)]
+pub enum StringOrMap {
+    String(String),
+    Map(BTreeMap<String, String>),
 }
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug, PartialEq, Eq)]
@@ -86,14 +82,17 @@ pub struct Container {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub required_ports: Option<PortsDefinition>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub mounts: Option<Mounts>,
+    pub mounts: Option<BTreeMap<String, StringOrMap>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub assign_fixed_ip: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub hidden_services: Option<HiddenServices>,
+    #[serde(default = "bool::default")]
+    /// Set this to true to avoid having Caddy in front
+    pub direct_tcp: bool,
 }
 
-#[derive(Serialize, Deserialize, Clone, Default, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Clone, Default, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 #[serde(rename_all = "camelCase")]
 pub struct InputMetadata {
@@ -106,7 +105,7 @@ pub struct InputMetadata {
     /// A short tagline for the app
     pub tagline: String,
     // Developer name -> their website
-    pub developers: HashMap<String, String>,
+    pub developers: BTreeMap<String, String>,
     /// A description of the app
     pub description: String,
     #[serde(default)]
@@ -121,6 +120,9 @@ pub struct InputMetadata {
     /// The path the "Open" link on the dashboard should lead to
     #[serde(skip_serializing_if = "Option::is_none")]
     pub path: Option<String>,
+    /// The app's default username
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub default_username: Option<String>,
     /// The app's default password. Can also be $APP_SEED for a random password
     pub default_password: Option<String>,
     #[serde(default = "bool::default")]

@@ -2,12 +2,12 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 #[serde(rename_all = "camelCase")]
 pub struct Metadata {
     /// The version of the metadata file
-    pub manifest_version: i8,
+    pub manifest_version: f64,
     /// The app id
     pub id: String,
     /// The name of the app
@@ -34,6 +34,8 @@ pub struct Metadata {
     /// The path the "Open" link on the dashboard should lead to
     #[serde(skip_serializing_if = "Option::is_none")]
     pub path: Option<String>,
+    /// The app's default username
+    pub default_username: Option<String>,
     /// The app's default password. Can also be $APP_SEED for a random password
     pub default_password: Option<String>,
     #[serde(default = "bool::default")]

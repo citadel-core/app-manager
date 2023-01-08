@@ -29,7 +29,7 @@ cargo build --bin app-cli --release --all-features
 To compile the CLI in a minimal version, like the one we ship to end users, run:
 
 ```
-cargo build --bin app-cli --release --features=cli,preprocess,umbrel
+cargo build --bin app-cli --release --features=cli,umbrel
 ```
 
 

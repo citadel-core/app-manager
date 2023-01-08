@@ -44,7 +44,15 @@ pub fn find_env_vars(string: &str) -> Vec<&str> {
             // If the env var starts with ${, remove it and the closing }
             // Otherwise, just remove the $
             if matched.starts_with("${") {
-                result.push(&matched[2..matched.len() - 1])
+                let simplified = &matched[2..matched.len() - 1];
+                // Split it at :-, : or -, depending on which of these exist
+                let split = simplified.splitn(2, '-').collect::<Vec<&str>>();
+                let main_var = split[0].split(':').collect::<Vec<&str>>()[0];
+                result.push(main_var);
+                if split.len() > 1 {
+                    let mut env_vars_in_default = find_env_vars(split[1]);
+                    result.append(&mut env_vars_in_default);
+                }
             } else {
                 result.push(&matched[1..matched.len()]);
             };
@@ -56,6 +64,7 @@ pub fn find_env_vars(string: &str) -> Vec<&str> {
 #[cfg(test)]
 mod test_env_vars {
     use crate::utils::find_env_vars;
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn handle_empty_properly() {
@@ -82,17 +91,34 @@ mod test_env_vars {
 
         assert!(expected.iter().all(|item| result.contains(item)));
     }
+
+    #[test]
+    fn find_vars_with_fallback() {
+        let result = find_env_vars("${DEVICE_HOSTS:-\"Hello world\"} ${OTHER_VAR-\"Hello world\"} ${ANOTHER_VAR:2:1} ${LAST_VAR:-$BYPASS}");
+        assert_eq!(
+            result,
+            vec![
+                "DEVICE_HOSTS",
+                "OTHER_VAR",
+                "ANOTHER_VAR",
+                "LAST_VAR",
+                "BYPASS"
+            ]
+        );
+    }
 }
 
-pub fn flatten(perms: Vec<Permissions>) -> Vec<String> {
-    let mut result = Vec::<String>::new();
+pub fn flatten<'a>(perms: &'a Vec<Permissions>) -> Vec<&'a String> {
+    let mut result = Vec::<&'a String>::new();
     for perm in perms {
         match perm {
             Permissions::OneDependency(dependency) => {
                 result.push(dependency);
             }
-            Permissions::AlternativeDependency(mut dependencies) => {
-                result.append(&mut dependencies);
+            Permissions::AlternativeDependency(dependencies) => {
+                for dependency in dependencies {
+                    result.push(dependency);
+                }
             }
         }
     }
@@ -106,28 +132,31 @@ mod test_flatten {
 
     #[test]
     fn handle_empty_properly() {
-        let result = flatten(Vec::<Permissions>::new());
-        assert_eq!(result, Vec::<String>::new());
+        let perms = Vec::<Permissions>::new();
+        let result = flatten(&perms);
+        assert_eq!(result, Vec::<&String>::new());
     }
 
     #[test]
     fn handle_simple_properly() {
-        let result = flatten(vec![
+        let perms = vec![
             Permissions::OneDependency("a".to_string()),
             Permissions::OneDependency("b".to_string()),
-        ]);
-        assert_eq!(result, vec!["a".to_string(), "b".to_string()]);
+        ];
+        let result = flatten(&perms);
+        assert_eq!(result, vec![&"a".to_string(), &"b".to_string()]);
     }
 
     #[test]
     fn handle_alternating_properly() {
-        let result = flatten(vec![
+        let perms = vec![
             Permissions::OneDependency("a".to_string()),
             Permissions::AlternativeDependency(vec!["b".to_string(), "c".to_string()]),
-        ]);
+        ];
+        let result = flatten(&perms);
         assert_eq!(
             result,
-            vec!["a".to_string(), "b".to_string(), "c".to_string()]
+            vec![&"a".to_string(), &"b".to_string(), &"c".to_string()]
         );
     }
 }
