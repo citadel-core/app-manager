@@ -21,7 +21,7 @@ schemars = { version = "0.8", optional = true }
 tokio  = { version = "1.23.0", optional = true, features = ["net", "rt"] }
 bollard = { version = "0.13.0", optional = true }
 futures-util = { version = "0.3.25", optional = true }
-octocrab = { version = "0.17.0", optional = true }
+octocrab = { version = "0.18.1", optional = true }
 semver = { version = "1.0.16", optional = true }
 gitlab = { version = "0.1506.0", optional = true }
 url = { version = "2.3.0", optional = true }
