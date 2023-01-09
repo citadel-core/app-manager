@@ -18,7 +18,7 @@ anyhow = { version = "1.0.68", features = ["backtrace"] }
 tracing = "0.1.37"
 # Optional dependencies
 schemars = { version = "0.8", optional = true }
-tokio  = { version = "1.23.0", optional = true, features = ["net", "rt"] }
+tokio  = { version = "1.24.1", optional = true, features = ["net", "rt"] }
 bollard = { version = "0.13.0", optional = true }
 futures-util = { version = "0.3.25", optional = true }
 octocrab = { version = "0.17.0", optional = true }
